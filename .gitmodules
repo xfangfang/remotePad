@@ -1,0 +1,6 @@
+[submodule "lib/mongoose"]
+	path = lib/mongoose
+	url = https://github.com/cesanta/mongoose.git
+[submodule "lib/GoldHEN_Plugins_SDK"]
+	path = lib/GoldHEN_Plugins_SDK
+	url = https://github.com/GoldHEN/GoldHEN_Plugins_SDK.git

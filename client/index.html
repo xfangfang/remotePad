@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html;" charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>RemotePad</title>
+    <style>
+      body {
+        -webkit-user-select: none;
+        -moz-user-select: none;
+        -ms-user-select: none;
+        user-select: none;
+        margin: 0;
+        padding: 0;
+        /*overflow: hidden;*/
+        touch-action: none;
+      }
+      .info {
+        margin: 1vw;
+        display: flex;
+        justify-content: center;
+      }
+      .pad {
+        width: 30vw;
+        height: 30vw;
+        display: flex;
+        flex-direction: column;
+      }
+      .pad-top {
+        display: flex;
+        justify-content: center;
+      }
+      .pad-center {
+        display: flex;
+        justify-content: space-between;
+      }
+      .btn {
+        width: 10vw;
+        height: 10vw;
+        font-size: 2em;
+        font-weight: bold;
+        background: #ccc;
+        border: 1px solid #aaa;
+        border-radius: 0.5em;
+        text-align: center;
+      }
+      .gamepad-top {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+      }
+      .gamepad-center {
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+      }
+
+      .stick-area {
+        width: 50vw;
+        height: 20vw;
+        position: absolute;
+        bottom: -10vw;
+        left: 25vw;
+        display: flex;
+        justify-content: space-between;
+      }
+
+      .stick {
+        width: 20vw;
+        height: 20vw;
+        background-color: gray;
+        border-radius: 10vw;
+        position: relative;
+      }
+
+      .touch {
+        width: 30vw;
+        height: 20vw;
+        position: relative;
+        top: -10vw;
+      }
+
+      #pad {
+        margin-right: 10px;
+      }
+
+      #url {
+        margin-right: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="info">
+      <select id="pad">
+        <option value="0">Pad0</option>
+        <option value="1">Pad1</option>
+        <option value="2">Pad2</option>
+        <option value="3">Pad3</option>
+      </select>
+      <label for="url">ws://</label>
+      <input id="url" type="text" placeholder="Type RemotePad server address" value="" style="width:20em;" />
+      <button id="connect">connect</button>
+    </div>
+
+    <div class="gamepad-top">
+      <div>
+        <button class="btn" id="btnL1">L1</button>
+        <button class="btn" id="btnL2">L2</button>
+        <button class="btn" id="btnShare">S</button>
+      </div>
+      <div>
+        <button class="btn" id="btnOptions">O</button>
+        <button class="btn" id="btnR2">R2</button>
+        <button class="btn" id="btnR1">R1</button>
+      </div>
+    </div>
+    <br>
+    <div class="gamepad-center">
+      <div class="pad">
+        <div class="pad-top">
+          <button class="btn" id="btnUp">↑</button>
+        </div>
+        <div class="pad-center">
+          <button class="btn" id="btnLeft">←</button>
+          <button class="btn" id="btnL3">L3</button>
+          <button class="btn" id="btnRight">→</button>
+        </div>
+        <div class="pad-top">
+          <button class="btn" id="btnDown">↓</button>
+        </div>
+      </div>
+
+      <button class="btn touch" id="btnTouch">TouchPad</button>
+
+
+      <div class="pad">
+        <div class="pad-top">
+          <button class="btn" id="btnTriangle">△</button>
+        </div>
+        <div class="pad-center">
+          <button class="btn" id="btnSquare">□</button>
+          <button class="btn" id="btnR3">R3</button>
+          <button class="btn" id="btnCircle">○</button>
+        </div>
+        <div class="pad-top">
+          <button class="btn" id="btnCross">X</button>
+        </div>
+      </div>
+
+      <div class="stick-area">
+        <div class="stick" id="cl">
+        </div>
+        <div class="stick" id="cr">
+        </div>
+      </div>
+    </div>
+  </body>
+  <script>
+    const OrbisPadButton =
+    {
+      ORBIS_PAD_BUTTON_L3: 0x0002,
+      ORBIS_PAD_BUTTON_R3: 0x0004,
+      ORBIS_PAD_BUTTON_OPTIONS: 0x0008,
+      ORBIS_PAD_BUTTON_UP: 0x0010,
+      ORBIS_PAD_BUTTON_RIGHT: 0x0020,
+      ORBIS_PAD_BUTTON_DOWN: 0x0040,
+      ORBIS_PAD_BUTTON_LEFT: 0x0080,
+
+      ORBIS_PAD_BUTTON_L2: 0x0100,
+      ORBIS_PAD_BUTTON_R2: 0x0200,
+      ORBIS_PAD_BUTTON_L1: 0x0400,
+      ORBIS_PAD_BUTTON_R1: 0x0800,
+
+      ORBIS_PAD_BUTTON_TRIANGLE: 0x1000,
+      ORBIS_PAD_BUTTON_CIRCLE: 0x2000,
+      ORBIS_PAD_BUTTON_CROSS: 0x4000,
+      ORBIS_PAD_BUTTON_SQUARE: 0x8000,
+
+      ORBIS_PAD_BUTTON_TOUCH_PAD: 0x100000
+    };
+
+    let rpc;
+    let rpc_running = false;
+    const JSONRPC_TIMEOUT_MS = 1000;
+
+    function jsonrpc(url, onopen, onclose, onnotification) {
+      var rpcid = 0, pending = {}, ws = new WebSocket(url);
+      if (!ws) return null;
+      ws.onclose = onclose;
+      ws.onmessage = function(ev) {
+        const frame = JSON.parse(ev.data);
+        console.log('rcvd', frame, 'pending:', pending);
+        if (frame.id !== undefined) {
+          if (pending[frame.id] !== undefined) pending[frame.id](frame);  // Resolve
+          delete (pending[frame.id]);
+        } else {
+          if (onnotification) onnotification(frame);
+        }
+      };
+      if (onopen) onopen();
+      return {
+        close: () => ws.close(),
+        call: function(method, params) {
+          const id = rpcid++, request = {id, method, params};
+          ws.send(JSON.stringify(request));
+          console.log('sent', request);
+          return new Promise(function(resolve, reject) {
+            setTimeout(function() {
+              if (pending[id] === undefined) return;
+              log('Timing out frame ', JSON.stringify(request));
+              delete (pending[id]);
+              reject();
+            }, JSONRPC_TIMEOUT_MS);
+            pending[id] = x => resolve(x);
+          });
+        },
+        callVoid: function(method, params) {
+          if (ws.readyState !== WebSocket.OPEN) return;
+          const id = rpcid++, request = {id, method, params};
+          ws.send(JSON.stringify(request));
+        },
+      };
+    }
+
+    function E(id) {
+      return document.getElementById(id);
+    }
+
+    const pad = E('pad');
+    const url = E('url');
+    const connect = E('connect');
+    const cl = E('cl');
+    const cr = E('cr');
+
+    const btn0 = E('btnCross');
+    const btn1 = E('btnCircle');
+    const btn2 = E('btnSquare');
+    const btn3 = E('btnTriangle');
+    const btn4 = E('btnL1');
+    const btn5 = E('btnR1');
+    const btn6 = E('btnL2');
+    const btn7 = E('btnR2');
+    const btn8 = E('btnShare');
+    const btn9 = E('btnOptions');
+    const btn10 = E('btnL3');
+    const btn11 = E('btnR3');
+    const btn12 = E('btnUp');
+    const btn13 = E('btnDown');
+    const btn14 = E('btnLeft');
+    const btn15 = E('btnRight');
+    const btn16 = E('btnTouch');
+
+    let lastUrl = localStorage.getItem('url');
+    if (lastUrl) {
+      url.value = lastUrl;
+    } else {
+      url.value = window.location.host;
+    }
+
+    const btnMap = [
+      {
+          btn: btn0,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_CROSS
+      },
+      {
+          btn: btn1,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE
+      },
+      {
+          btn: btn2,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE
+      },
+      {
+          btn: btn3,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE
+      },
+      {
+          btn: btn4,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_L1
+      },
+      {
+          btn: btn5,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_R1
+      },
+      {
+          btn: btn6,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_L2
+      },
+      {
+          btn: btn7,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_R2
+      },
+      {
+          // share => touchpad
+          btn: btn8,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+      },
+      {
+          btn: btn9,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS
+      },
+      {
+          btn: btn10,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_L3
+      },
+      {
+          btn: btn11,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_R3
+      },
+      {
+          btn: btn12,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_UP
+      },
+      {
+          btn: btn13,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_DOWN
+      },
+      {
+          btn: btn14,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_LEFT
+      },
+      {
+          btn: btn15,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT
+      },
+      {
+          btn: btn16,
+          value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+      }
+    ]
+
+    // 按键
+    let GamepadButton = 0;
+    // 摇杆
+    let leftStickX = 128, leftStickY = 128, rightStickX = 128, rightStickY = 128;
+    // 扳机
+    let left2 = 0, right2 = 0;
+
+    function setGamePadStatus(enabled) {
+      for (let i = 0; i < btnMap.length; i++) {
+        btnMap[i].btn.disabled = !enabled;
+      }
+      url.disabled = enabled;
+      connect.innerHTML = enabled ? 'disconnect' : 'connect';
+      if (!enabled) {
+        rpc = null;
+      }
+    }
+    setGamePadStatus(false);
+
+    function toggleConnection() {
+      localStorage.setItem('url', url.value);
+      if (rpc) {
+        rpc.close();
+        rpc = null;
+        return;
+      }
+      rpc = jsonrpc("ws://" + url.value,
+            () => setGamePadStatus(true),
+            () => setGamePadStatus(false),
+            msg => console.log('NOTIFICATION: ' + JSON.stringify(msg)));
+    }
+
+    connect.onclick = toggleConnection;
+    toggleConnection();
+
+    function sendData() {
+      if (!rpc)
+        return;
+      rpc.callVoid('u', [Number(pad.value), GamepadButton, leftStickX, leftStickY, rightStickX, rightStickY, left2, right2]);
+    }
+
+    function sendButtonDown(btn) {
+      GamepadButton |= btn;
+      sendData();
+    }
+
+    function sendButtonUp(btn) {
+      GamepadButton &= ~btn;
+      sendData();
+    }
+
+    // 摇杆
+    cl.onmousemove = function (ev) {
+      if (ev.buttons === 1) {
+        leftStickX = Math.floor((ev.offsetX / cl.offsetWidth) * 256);
+        leftStickY = Math.floor((ev.offsetY / cl.offsetHeight) * 256);
+        sendData();
+      }
+    };
+    cl.onmouseup = function (ev) {
+      leftStickX = 128;
+      leftStickY = 128;
+      sendData();
+    };
+    cr.onmousemove = function (ev) {
+      if (ev.buttons === 1) {
+        rightStickX = Math.floor((ev.offsetX / cr.offsetWidth) * 256);
+        rightStickY = Math.floor((ev.offsetY / cr.offsetHeight) * 256);
+        sendData();
+      }
+    };
+    cr.onmouseup = function (ev) {
+      rightStickX = 128;
+      rightStickY = 128;
+      sendData();
+    };
+
+    // 按键
+    for (let i = 0; i < btnMap.length; i++) {
+      btnMap[i].btn.ontouchstart = btnMap[i].btn.onmousedown = ev => {
+        // 模拟扳机
+        if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
+          left2 = 255;
+        } else if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
+          right2 = 255;
+        }
+        sendButtonDown(btnMap[i].value);
+      }
+      btnMap[i].btn.ontouchend = btnMap[i].btn.onmouseup = ev => {
+        // 模拟扳机
+        if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
+          left2 = 0;
+        } else if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
+          right2 = 0;
+        }
+        sendButtonUp(btnMap[i].value);
+      }
+    }
+
+    let haveEvents = 'GamepadEvent' in window;
+    let haveWebkitEvents = 'WebKitGamepadEvent' in window;
+    let controllers = {};
+    let rAF = window.mozRequestAnimationFrame ||
+            window.webkitRequestAnimationFrame ||
+            window.requestAnimationFrame;
+
+    function addGamepad(gamepad) {
+      console.log("gamepad connected", gamepad);
+      btn16.innerHTML = "GamePad\nConnected";
+      controllers[gamepad.index] = gamepad;
+      rAF(updateStatus);
+    }
+
+    function removeGamepad(gamepad) {
+      delete controllers[gamepad.index];
+    }
+
+    function connectHandler(e) {
+      addGamepad(e.gamepad);
+    }
+
+    function disconnectHandler(e) {
+      removeGamepad(e.gamepad);
+    }
+
+    function scanGamepads() {
+      let gamepads = navigator.getGamepads ? navigator.getGamepads() : (navigator.webkitGetGamepads ? navigator.webkitGetGamepads() : []);
+      for (let i = 0; i < gamepads.length; i++) {
+        if (gamepads[i] && (gamepads[i].index in controllers)) {
+          controllers[gamepads[i].index] = gamepads[i];
+        }
+      }
+    }
+
+    function updateStatus() {
+      scanGamepads();
+
+      for (let j in controllers) {
+        let controller = controllers[j];
+        let buttons = 0;
+        for (let i=0; i<controller.buttons.length; i++) {
+          let val = controller.buttons[i];
+          let pressed = val == 1.0;
+          let touched = false;
+          if (typeof(val) == "object") {
+            pressed = val.pressed;
+            if ('touched' in val) {
+              touched = val.touched;
+            }
+            val = val.value;
+          }
+          if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
+            left2 = Math.round(val * 255);
+            if (left2 > 128) {
+              buttons |= OrbisPadButton.ORBIS_PAD_BUTTON_L2;
+            }
+          } else if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
+            right2 = Math.round(val * 255);
+            if (right2 > 128) {
+              buttons |= OrbisPadButton.ORBIS_PAD_BUTTON_R2;
+            }
+          } else if (pressed || touched){
+            buttons |= btnMap[i].value;
+          }
+        }
+        GamepadButton = buttons;
+
+        leftStickX = Math.round((controller.axes[0] + 1) / 2 * 255);
+        leftStickY = Math.round((controller.axes[1] + 1) / 2 * 255);
+        rightStickX = Math.round((controller.axes[2] + 1) / 2 * 255);
+        rightStickY = Math.round((controller.axes[3] + 1) / 2 * 255);
+
+        sendData();
+        break;
+      }
+
+      rAF(updateStatus);
+    }
+
+    if (haveEvents) {
+      window.addEventListener("gamepadconnected", connectHandler);
+      window.addEventListener("gamepaddisconnected", disconnectHandler);
+    } else if (haveWebkitEvents) {
+      window.addEventListener("webkitgamepadconnected", connectHandler);
+      window.addEventListener("webkitgamepaddisconnected", disconnectHandler);
+    } else {
+      setInterval(scanGamepads, 500);
+    }
+  </script>
+</html>

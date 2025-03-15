@@ -1,9 +1,9 @@
 # RemotePad
-Control your ps4 through Network / USB (WIP).
+Control your jailbreak PS4 through Network / USB (WIP).
 
 # How to use
 
-See the Wiki for more information about how to use this plugin and game compatibility.
+See the [Wiki](https://github.com/xfangfang/remotePad/wiki) for more information about how to use this GoldHEN plugin and game compatibility.
 
 # Development
 

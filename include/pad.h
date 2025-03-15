@@ -52,6 +52,8 @@ typedef struct RemotePadDriver {
 
     // Driver specific global data
     void *data;
+
+    const char* name;
 } RemotePadDriver;
 
 typedef struct RemotePad {

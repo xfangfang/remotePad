@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.10)
 option(DEVICE_IP "Set your PS4 IP address to send the PRX directly to the GoldHEN plugin folder")
 option(DEBUG_SDK "Enable debug output for GoldHEN SDK" OFF)
 
+if (NOT DEFINED ENV{OO_PS4_TOOLCHAIN})
+    message(FATAL_ERROR "Please set OO_PS4_TOOLCHAIN in your environment. export OO_PS4_TOOLCHAIN=<path to>/PS4Toolchain")
+endif ()
+set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/ps4.cmake" CACHE PATH "toolchain file")
+
 project(remote_pad C)
 
 add_subdirectory(lib)

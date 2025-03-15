@@ -1,0 +1,27 @@
+name: Build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build-prx:
+    runs-on: ubuntu-latest
+    container: xfangfang/goldhen_plugin:latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Build
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: remote_pad.prx
+          path: build/remote_pad.prx

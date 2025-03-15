@@ -14,3 +14,6 @@ See the [Wiki](https://github.com/xfangfang/remotePad/wiki) for more information
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
+
+# Acknowledgements
+Thanks to [jocover](https://github.com/jocover) for his kind help during the development.

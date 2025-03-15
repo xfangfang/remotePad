@@ -224,6 +224,7 @@ static int32_t wsTerm(RemotePadDriverPtr driver) {
 }
 
 const struct RemotePadDriver wsDriver = {
+        .name = "websocket",
         .init = wsInit,
         .term = wsTerm,
         .setLightBar = wsSetLightBar,

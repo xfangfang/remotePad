@@ -1,4 +1,3 @@
-#include <orbis/libkernel.h>
 #include <string.h>
 
 #include "pad.h"
@@ -43,6 +42,7 @@ int32_t dummyTerm(RemotePadDriverPtr driver) {
 }
 
 const struct RemotePadDriver dummyDriver = {
+        .name = "dummy",
         .init = dummyInit,
         .term = dummyTerm,
         .setLightBar = dummySetLightBar,

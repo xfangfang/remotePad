@@ -1,0 +1,13 @@
+diff --git a/Makefile b/Makefile
+index f52fa18..26eb75a 100644
+--- a/Makefile
++++ b/Makefile
+@@ -92,7 +92,7 @@ clean:
+ 	rm -rf $(TARGET) $(TARGETSTUB) $(INTDIR) $(OBJS) $(TARGETCRT) $(TARGETSTATIC)
+ 
+ crt:
+-	@mkdir build
++	@mkdir -p build
+ 	$(CC) -target x86_64-pc-linux-gnu -ffreestanding -nostdlib -fno-builtin -fPIC -isysroot $(TOOLCHAIN) -isystem $(TOOLCHAIN)/include -c crt/crtprx.c -o $(TARGETCRT)
+ 
+ install: all

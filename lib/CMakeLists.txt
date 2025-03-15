@@ -26,5 +26,5 @@ add_custom_target(goldhen_sdk
 
 # A fake target to make IDE happy
 file(GLOB GoldHEN_SOURCE_FAKE ${GoldHEN_SDK_DIR}/source/*.c)
-add_library(GoldHEN_SDK_FAKE STATIC ${GoldHEN_SOURCE_FILES})
+add_library(GoldHEN_SDK_FAKE STATIC EXCLUDE_FROM_ALL ${GoldHEN_SOURCE_FILES})
 target_include_directories(GoldHEN_SDK_FAKE PUBLIC ${GoldHEN_SDK_DIR}/include)

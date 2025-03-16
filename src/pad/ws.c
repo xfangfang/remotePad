@@ -111,7 +111,7 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
     } else if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         struct mg_str *connection = mg_http_get_header(hm, "Connection");
-        if (mg_strcasecmp(*connection, mg_str("Upgrade")) == 0) {
+        if (connection && mg_strcasecmp(*connection, mg_str("Upgrade")) == 0) {
             mg_ws_upgrade(c, hm, NULL);
             return;
         }

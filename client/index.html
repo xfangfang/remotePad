@@ -330,11 +330,8 @@
       }
     ]
 
-    // 按键
     let GamepadButton = 0;
-    // 摇杆
     let leftStickX = 128, leftStickY = 128, rightStickX = 128, rightStickY = 128;
-    // 扳机
     let left2 = 0, right2 = 0;
 
     function setGamePadStatus(enabled) {
@@ -381,7 +378,6 @@
       sendData();
     }
 
-    // 摇杆
     cl.onmousemove = function (ev) {
       if (ev.buttons === 1) {
         leftStickX = Math.floor((ev.offsetX / cl.offsetWidth) * 256);
@@ -407,10 +403,8 @@
       sendData();
     };
 
-    // 按键
     for (let i = 0; i < btnMap.length; i++) {
       btnMap[i].btn.ontouchstart = btnMap[i].btn.onmousedown = ev => {
-        // 模拟扳机
         if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
           left2 = 255;
         } else if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
@@ -518,5 +512,108 @@
     } else {
       setInterval(scanGamepads, 500);
     }
+
+    const keyboardMap = {
+      "ArrowUp":    OrbisPadButton.ORBIS_PAD_BUTTON_UP,
+      "ArrowDown":  OrbisPadButton.ORBIS_PAD_BUTTON_DOWN,
+      "ArrowLeft":  OrbisPadButton.ORBIS_PAD_BUTTON_LEFT,
+      "ArrowRight": OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT,
+      "KeyQ": OrbisPadButton.ORBIS_PAD_BUTTON_L1,
+      "KeyE": OrbisPadButton.ORBIS_PAD_BUTTON_R1,
+      "Digit1": OrbisPadButton.ORBIS_PAD_BUTTON_L2,
+      "Digit3": OrbisPadButton.ORBIS_PAD_BUTTON_R2,
+      "KeyJ": OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE,
+      "KeyM": OrbisPadButton.ORBIS_PAD_BUTTON_CROSS,
+      "KeyK": OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE,
+      "KeyI": OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE,
+      "KeyO": OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS,
+      "KeyU": OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD,
+
+      "Space": OrbisPadButton.ORBIS_PAD_BUTTON_CROSS,
+      "Escape": OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE,
+    };
+
+    window.addEventListener("keydown", (ev) => {
+      if (document.activeElement.tagName === "INPUT" ||
+              document.activeElement.tagName === "TEXTAREA") {
+        return;
+      }
+
+      console.log(ev.code)
+      switch (ev.code) {
+        case "KeyW":
+          leftStickY = 0;
+          sendData();
+          return;
+        case "KeyS":
+          leftStickY = 255;
+          sendData();
+          return;
+        case "KeyA":
+          leftStickX = 0;
+          sendData();
+          return;
+        case "KeyD":
+          leftStickX = 255;
+          sendData();
+          return;
+      }
+
+      console.log(ev.code)
+
+      const b = keyboardMap[ev.code];
+      if (!b) return;
+
+      if (b === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
+        left2 = 255;
+      } else if (b === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
+        right2 = 255;
+      }
+
+      GamepadButton |= b;
+      sendData();
+
+      ev.preventDefault();
+    });
+
+    window.addEventListener("keyup", (ev) => {
+      if (document.activeElement.tagName === "INPUT" ||
+              document.activeElement.tagName === "TEXTAREA") {
+        return;
+      }
+
+      switch (ev.code) {
+        case "KeyW":
+          leftStickY = 128;
+          sendData();
+          return;
+        case "KeyS":
+          leftStickY = 128;
+          sendData();
+          return;
+        case "KeyA":
+          leftStickX = 128;
+          sendData();
+          return;
+        case "KeyD":
+          leftStickX = 128;
+          sendData();
+          return;
+      }
+
+      const b = keyboardMap[ev.code];
+      if (!b) return;
+
+      if (b === OrbisPadButton.ORBIS_PAD_BUTTON_L2) {
+        left2 = 0;
+      } else if (b === OrbisPadButton.ORBIS_PAD_BUTTON_R2) {
+        right2 = 0;
+      }
+
+      GamepadButton &= ~b;
+      sendData();
+
+      ev.preventDefault();
+    });
   </script>
 </html>

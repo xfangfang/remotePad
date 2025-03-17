@@ -1,9 +1,18 @@
-# RemotePad
-Control your jailbreak PS4 through Network / USB (WIP).
+# RemotePad (WIP)
+
+This project brings you the PS4 Virtual Controller, which allows you to control your jailbroken PS4 through Network / USB.
+
+You don't need to buy multiple DS4s to play local multiplayer games anymore. Just use your phone, PC, or third-party controller to play games with your friends.
 
 # How to use
 
 See the [Wiki](https://github.com/xfangfang/remotePad/wiki) for more information about how to use this GoldHEN plugin and game compatibility.
+
+# Download
+
+GitHub Release: [link](https://github.com/xfangfang/remotePad/releases/latest)
+
+Nightly build: [link](https://nightly.link/xfangfang/remotePad/workflows/ci.yaml/main/remote_pad.prx)
 
 # Development
 

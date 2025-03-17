@@ -91,6 +91,40 @@ HOOK_DEFINE(scePadSetVibration, int32_t handle, const OrbisPadVibeParam *param) 
     return HOOK_PASS(scePadSetVibration, handle, param);
 }
 
+typedef struct {
+    int32_t deviceClass;
+    bool bDataValid;
+    uint8_t classData[16];
+} OrbisPadDeviceClassData;
+HOOK_DEFINE(scePadDeviceClassParseData, int32_t handle, const OrbisPadData *data, OrbisPadDeviceClassData *classData) {
+    RemotePad *pad = NULL;
+    remotePad->getPad(handle, &pad);
+    if (pad != NULL) {
+        memset(classData, 0, sizeof(OrbisPadDeviceClassData));
+        classData->deviceClass = ORBIS_PAD_DEVICE_CLASS_PAD;
+        classData->bDataValid = true;
+        return SCE_OK;
+    }
+    return HOOK_PASS(scePadDeviceClassParseData, handle, data, classData);
+}
+
+typedef struct {
+    int32_t deviceClass;
+    uint8_t reserved[4];
+    uint8_t classData[12];
+} OrbisPadDeviceClassExtInfo;
+HOOK_DEFINE(scePadDeviceClassGetExtendedInformation, int32_t handle, OrbisPadDeviceClassExtInfo *info) {
+    RemotePad *pad = NULL;
+    remotePad->getPad(handle, &pad);
+    if (pad != NULL) {
+        memset(info, 0, sizeof(OrbisPadDeviceClassExtInfo));
+        info->deviceClass = ORBIS_PAD_DEVICE_CLASS_PAD;
+        return SCE_OK;
+    }
+    return HOOK_PASS(scePadDeviceClassGetExtendedInformation, handle, info);
+}
+
+
 HOOK_DEFINE(sceUserServiceGetUserName, int32_t userId, char *username, size_t size) {
     if (remoteUserService->getUserName(userId, username, size) == SCE_OK)
         return SCE_OK;
@@ -240,6 +274,8 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
     HOOK32(scePadSetLightBar);
     HOOK32(scePadResetLightBar);
     HOOK32(scePadSetVibration);
+    HOOK32(scePadDeviceClassParseData);
+    HOOK32(scePadDeviceClassGetExtendedInformation);
     HOOK32(scePadClose);
 
     HOOK32(sceUserServiceGetLoginUserIdList);

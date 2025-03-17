@@ -14,6 +14,7 @@
         padding: 0;
         /*overflow: hidden;*/
         touch-action: none;
+        font-family: system-ui;
       }
       .info {
         margin: 1vw;
@@ -89,6 +90,8 @@
         background-color: gray;
         border-radius: 10vw;
         position: relative;
+        color: #ccc;
+        font-size: 0.8em;
       }
 
       .stick-pad {
@@ -97,6 +100,31 @@
         background-color: #ccc;
         border-radius: 5vw;
         position: absolute;
+      }
+
+      .stick .top {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .stick .right {
+        position: absolute;
+        top: 50%;
+        right: 0;
+        transform: translateY(-50%);
+      }
+      .stick .bottom {
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+      }
+      .stick .left {
+          position: absolute;
+          top: 50%;
+          left: 0;
+          transform: translateY(-50%);
       }
 
       .touch {
@@ -178,8 +206,20 @@
       </div>
 
       <div class="stick-area">
-        <div class="stick" id="cl"><div id="cl-pad" class="stick-pad"></div></div>
-        <div class="stick" id="cr"><div id="cr-pad" class="stick-pad"></div></div>
+        <div class="stick" id="cl">
+          <div id="cl-pad" class="stick-pad"></div>
+          <span class="top">W</span>
+          <span class="right">D</span>
+          <span class="bottom">S</span>
+          <span class="left">A</span>
+        </div>
+        <div class="stick" id="cr">
+          <div id="cr-pad" class="stick-pad"></div>
+          <span class="top">↑</span>
+          <span class="right">→</span>
+          <span class="bottom">↓</span>
+          <span class="left">←</span>
+        </div>
       </div>
     </div>
   </body>
@@ -217,7 +257,6 @@
       ws.onclose = onclose;
       ws.onmessage = function(ev) {
         const frame = JSON.parse(ev.data);
-        console.log('rcvd', frame, 'pending:', pending);
         if (frame.id !== undefined) {
           if (pending[frame.id] !== undefined) pending[frame.id](frame);  // Resolve
           delete (pending[frame.id]);
@@ -225,7 +264,9 @@
           if (onnotification) onnotification(frame);
         }
       };
-      if (onopen) onopen();
+      ws.onopen = function() {
+        if (onopen) onopen();
+      };
       return {
         close: () => ws.close(),
         call: function(method, params) {
@@ -390,6 +431,12 @@
     let MouseButton = 0;
     let MouseLeftStickX = 128, MouseLeftStickY = 128, MouseRightStickX = 128, MouseRightStickY = 128;
 
+    function notify(msg) {
+      if (!rpc)
+        return;
+      rpc.callVoid('notify', [msg]);
+    }
+
     function setGamePadStatus(enabled) {
       for (let i = 0; i < btnMap.length; i++) {
         btnMap[i].btn.disabled = !enabled;
@@ -413,7 +460,11 @@
       rpc = jsonrpc("ws://" + url.value,
             () => setGamePadStatus(true),
             () => setGamePadStatus(false),
-            msg => console.log('NOTIFICATION: ' + JSON.stringify(msg)));
+            msg => {
+              if (msg.method === 'vibration') {
+                processVibration(msg.params);
+              }
+            });
     }
 
     connect.onclick = toggleConnection;
@@ -613,10 +664,16 @@
       console.log("gamepad connected", gamepad);
       btn16.innerHTML = "GamePad\nConnected";
       controllers[gamepad.index] = gamepad;
+
+      if (gamepad.vibrationActuator && gamepad.vibrationActuator.type === "dual-rumble") {
+        controllers[gamepad.index].canVibrate = true;
+      }
+
       rAF(updateStatus);
     }
 
     function removeGamepad(gamepad) {
+      btn16.innerHTML = "TouchPad";
       delete controllers[gamepad.index];
     }
 
@@ -634,6 +691,34 @@
         if (gamepads[i] && (gamepads[i].index in controllers)) {
           controllers[gamepads[i].index] = gamepads[i];
         }
+      }
+    }
+
+    function processVibration(params) {
+
+      let pad_index = params[0];
+      let large_motor = params[1];
+      let small_motor = params[2];
+
+      if (pad_index !== Number(pad.value)) {
+        return;
+      }
+
+      for (let j in controllers) {
+        let controller = controllers[j];
+        if (!controller.canVibrate)
+          break;
+        if (small_motor === 0 && large_motor === 0) {
+          controller.vibrationActuator.reset();
+          break;
+        }
+        controller.vibrationActuator.playEffect("dual-rumble", {
+          startDelay: 0,
+          duration: 1000,
+          weakMagnitude: small_motor / 255,
+          strongMagnitude: large_motor / 255,
+        });
+        break;
       }
     }
 
@@ -697,9 +782,9 @@
      */
 
     const keyboardMap = {
-      "KeyI":    OrbisPadButton.ORBIS_PAD_BUTTON_UP,
-      "KeyK":  OrbisPadButton.ORBIS_PAD_BUTTON_DOWN,
-      "KeyJ":  OrbisPadButton.ORBIS_PAD_BUTTON_LEFT,
+      "KeyI": OrbisPadButton.ORBIS_PAD_BUTTON_UP,
+      "KeyK": OrbisPadButton.ORBIS_PAD_BUTTON_DOWN,
+      "KeyJ": OrbisPadButton.ORBIS_PAD_BUTTON_LEFT,
       "KeyL": OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT,
 
       "KeyQ": OrbisPadButton.ORBIS_PAD_BUTTON_L1,

@@ -103,6 +103,11 @@ static void rpc_update(struct mg_rpc_req *r) {
     scePthreadMutexUnlock(&ctx->padMutex);
 }
 
+static void rpc_notify(struct mg_rpc_req *r) {
+    char *text = mg_json_get_str(r->frame, "$.params[0]");
+    Notify(TEX_ICON_SYSTEM, text);
+}
+
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_OPEN) {
         // c->is_hexdumping = 1;
@@ -136,6 +141,7 @@ void *websocketThread(void *thread_arg) {
     mg_log_set(MG_LL_NONE);
 
     mg_rpc_add(&ctx->rpc_head, mg_str("u"), rpc_update, ctx);
+    mg_rpc_add(&ctx->rpc_head, mg_str("notify"), rpc_notify, ctx);
     mg_rpc_add(&ctx->rpc_head, mg_str("rpc.list"), mg_rpc_list, &ctx->rpc_head);
 
     final_printf("Starting WS listener on %s\n", s_listen_on);
@@ -159,6 +165,15 @@ static int32_t wsResetLightBar(RemotePad *pad) {
 }
 
 static int32_t wsSetVibration(RemotePad *pad, const OrbisPadVibeParam *param) {
+    wsDriverData *ctx = pad->driver->data;
+    struct mg_mgr *mgr = &ctx->mgr;
+    // Broadcast message to all connected websocket clients.
+    for (struct mg_connection *c = mgr->conns; c != NULL; c = c->next) {
+        if (c->data[0] != 'W') continue;
+        mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m:%m,%m:[%d,%d,%d]}",
+                     MG_ESC("method"), MG_ESC("vibration"), MG_ESC("params"),
+                     pad->index, param->lgMotor, param->smMotor);
+    }
     return 0;
 }
 

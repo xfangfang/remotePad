@@ -124,7 +124,6 @@ HOOK_DEFINE(scePadDeviceClassGetExtendedInformation, int32_t handle, OrbisPadDev
     return HOOK_PASS(scePadDeviceClassGetExtendedInformation, handle, info);
 }
 
-
 HOOK_DEFINE(sceUserServiceGetUserName, int32_t userId, char *username, size_t size) {
     if (remoteUserService->getUserName(userId, username, size) == SCE_OK)
         return SCE_OK;

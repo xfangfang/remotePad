@@ -106,6 +106,7 @@ static void rpc_update(struct mg_rpc_req *r) {
 static void rpc_notify(struct mg_rpc_req *r) {
     char *text = mg_json_get_str(r->frame, "$.params[0]");
     Notify(TEX_ICON_SYSTEM, text);
+    free(text);
 }
 
 static void fn(struct mg_connection *c, int ev, void *ev_data) {

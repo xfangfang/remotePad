@@ -12,7 +12,7 @@ See the [Wiki](https://github.com/xfangfang/remotePad/wiki) for more information
 
 GitHub Release: [link](https://github.com/xfangfang/remotePad/releases/latest)
 
-Nightly build: [link](https://nightly.link/xfangfang/remotePad/workflows/ci.yaml/main/remote_pad.prx)
+Nightly build: [link](https://nightly.link/xfangfang/remotePad/workflows/ci.yaml/main/remote_pad.prx.zip)
 
 # Development
 

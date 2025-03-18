@@ -420,6 +420,10 @@
       {
           btn: btn16,
           value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+      },
+      {
+        btn: btn16,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       }
     ]
 
@@ -728,7 +732,7 @@
       for (let j in controllers) {
         let controller = controllers[j];
         let buttons = 0;
-        for (let i=0; i<controller.buttons.length; i++) {
+        for (let i = 0; i < controller.buttons.length && i < btnMap.length; i++) {
           let val = controller.buttons[i];
           let pressed = val == 1.0;
           let touched = false;

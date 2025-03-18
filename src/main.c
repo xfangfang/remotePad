@@ -13,7 +13,7 @@
 attr_public const char *g_pluginName = "remote_gamepad";
 attr_public const char *g_pluginDesc = "Control your ps4 through network";
 attr_public const char *g_pluginAuth = "xfangfang";
-attr_public uint32_t g_pluginVersion = 0x00000100; // 1.00
+attr_public uint32_t g_pluginVersion = 0x00000110; // 1.1.0
 
 #define PLUGIN_CONFIG_PATH GOLDHEN_PATH "/remote_pad.ini"
 #define PLUGIN_DEFAULT_SECTION "default"

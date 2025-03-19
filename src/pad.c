@@ -239,9 +239,9 @@ void circularGetLatest(circularBuf *buf, OrbisPadData *data) {
 }
 
 int32_t circularGet(circularBuf *buf, OrbisPadData *data, int32_t count) {
-    int32_t ret = count;
-    if (ret > REMOTE_PAD_MAX_HISTORY)
-        ret = REMOTE_PAD_MAX_HISTORY;
+    int32_t ret = 0;
+    if (count > REMOTE_PAD_MAX_HISTORY)
+        count = REMOTE_PAD_MAX_HISTORY;
     if (buf->tail == buf->head) {
         emptyPadData(data);
         return 0;
@@ -251,6 +251,7 @@ int32_t circularGet(circularBuf *buf, OrbisPadData *data, int32_t count) {
         buf->tail = (buf->tail + 1) % REMOTE_PAD_MAX_HISTORY;
         data++;
         count--;
+        ret++;
     }
 
     return ret;

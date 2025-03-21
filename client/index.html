@@ -32,8 +32,8 @@
         text-align: center;
       }
       .pad {
-        width: 31vw;
-        height: 31vw;
+        width: 25vw;
+        height: 25vw;
         display: flex;
         flex-direction: column;
         justify-content: space-between;
@@ -47,8 +47,8 @@
         justify-content: space-between;
       }
       .btn {
-        width: 10vw;
-        height: 10vw;
+        width: 8vw;
+        height: 8vw;
         font-size: 2.5vw;
         font-weight: bold;
         background: #ccc;
@@ -70,6 +70,7 @@
       .gamepad-center {
         width: 100%;
         display: flex;
+        margin-top: 10px;
         justify-content: space-between;
         position: relative;
       }
@@ -78,7 +79,7 @@
         width: 50vw;
         height: 20vw;
         position: absolute;
-        bottom: -10vw;
+        bottom: -8vw;
         left: 25vw;
         display: flex;
         justify-content: space-between;
@@ -173,7 +174,6 @@
         <button class="btn" id="btnR1">R1<span>KeyE</span></button>
       </div>
     </div>
-    <br>
     <div class="gamepad-center">
       <div class="pad">
         <div class="pad-top">
@@ -560,26 +560,26 @@
     let rightStickStartY = 0;
     let leftStickMoveFinger = -1;
     let rightStickMoveFinger = -1;
-    cl_pad.onmousedown = function (ev) {
+    cl_pad.addEventListener("mousedown", function (ev) {
       leftStickStartX = ev.screenX;
       leftStickStartY = ev.screenY;
       leftStickMoveFinger = 1;
-    };
-    cl_pad.ontouchstart = function (ev) {
+    });
+    cl_pad.addEventListener("touchstart", function (ev) {
       leftStickStartX = ev.changedTouches[0].screenX;
       leftStickStartY = ev.changedTouches[0].screenY;
       leftStickMoveFinger = ev.changedTouches[0].identifier;
-    }
-    cr_pad.onmousedown = function (ev) {
+    });
+    cr_pad.addEventListener("mousedown", function (ev) {
       rightStickStartX = ev.screenX;
       rightStickStartY = ev.screenY;
       rightStickMoveFinger = 1;
-    };
-    cr_pad.ontouchstart = function (ev) {
+    });
+    cr_pad.addEventListener("touchstart",function (ev) {
       rightStickStartX = ev.changedTouches[0].screenX;
       rightStickStartY = ev.changedTouches[0].screenY;
       rightStickMoveFinger = ev.changedTouches[0].identifier;
-    }
+    });
     function updateLeftStickPosition(event_x, event_y) {
       MouseLeftStickX = ((event_x - leftStickStartX) / cl_pad.offsetWidth + 1) / 2 * 255;
       MouseLeftStickX = clamp(MouseLeftStickX, 0, 255);
@@ -596,15 +596,15 @@
       MouseRightStickY = clamp(MouseRightStickY, 0, 255);
       sendData();
     }
-    document.onmousemove = function (ev) {
+    document.addEventListener("mousemove", function (ev) {
       let event_x = ev.screenX;
       let event_y = ev.screenY;
       if (leftStickMoveFinger >= 0)
         updateLeftStickPosition(event_x, event_y);
       if (rightStickMoveFinger >= 0)
         updateRightStickPosition(event_x, event_y);
-    };
-    document.ontouchmove = function (ev) {
+    });
+    document.addEventListener("touchmove", function (ev) {
       for (let i of ev.touches) {
         if (leftStickMoveFinger === i.identifier) {
           updateLeftStickPosition(i.screenX, i.screenY);
@@ -612,9 +612,9 @@
           updateRightStickPosition(i.screenX, i.screenY);
         }
       }
-    };
+    });
 
-    document.onmouseup = function (ev) {
+    document.addEventListener("mouseup", function (ev) {
       MouseLeftStickX = 128;
       MouseLeftStickY = 128;
       MouseRightStickX = 128;
@@ -622,9 +622,9 @@
       leftStickMoveFinger = -1;
       rightStickMoveFinger = -1;
       sendData();
-    };
+    });
 
-    document.ontouchend = function (ev) {
+    document.addEventListener("touchend", function (ev) {
       for (let i of ev.changedTouches) {
         if (leftStickMoveFinger === i.identifier) {
           MouseLeftStickX = 128;
@@ -640,17 +640,21 @@
           ev.preventDefault();
         }
       }
-    }
+    });
 
     for (let i = 0; i < btnMap.length; i++) {
-      btnMap[i].btn.ontouchstart = btnMap[i].btn.onmousedown = ev => {
+      const keyDown = function(ev) {
         sendButtonDown(btnMap[i].value);
         ev.preventDefault();
       }
-      btnMap[i].btn.ontouchend = btnMap[i].btn.onmouseup = ev => {
-        sendButtonUp(btnMap[i].value);
-        ev.preventDefault();
+      const keyUp = function(ev) {
+          sendButtonUp(btnMap[i].value);
+          ev.preventDefault();
       }
+      btnMap[i].btn.addEventListener("touchstart", keyDown);
+      btnMap[i].btn.addEventListener("mousedown", keyDown);
+      btnMap[i].btn.addEventListener("touchend", keyUp);
+      btnMap[i].btn.addEventListener("mouseup", keyUp);
     }
 
     /**

@@ -6,55 +6,38 @@
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
+extern RemotePadService rps;
+
 extern const RemotePadDriver dummyDriver;
 extern const RemotePadDriver wsDriver;
 extern const RemotePadDriver usbDriver;
 
 static const RemotePadDriver *const padDrivers[] = {&dummyDriver, &wsDriver};
 
-static int32_t init();
-
-static int32_t term();
-
-static int32_t getPad(int32_t handle, RemotePad **padPtr);
-
-static int32_t padSetLightBar(int32_t handle, OrbisPadColor *inputColor);
-
-static int32_t padResetLightBar(int32_t handle);
-
-static int32_t padSetVibration(int32_t handle, const OrbisPadVibeParam *param);
-
-static int32_t padGetControllerInformation(int32_t handle, OrbisPadInformation *info);
-
-static int32_t padRead(int32_t handle, OrbisPadData *data, int32_t count);
-
-static int32_t padReadState(int32_t handle, OrbisPadData *data);
-
-static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t controller_index);
-
-static int32_t padOpen(int32_t userId, int32_t type, int32_t index, void *param);
-
-static int32_t padClose(int32_t handle);
-
-#define GET_PAD(handle) NULL; \
+#define GET_PAD(handle) \
+    RemotePad *pad = NULL; \
+    scePthreadMutexLock(&rps.padMutex); \
     int ret = rps.getPad(handle, &pad); \
-    if (ret != 0) \
-        return ret;
+    if (ret != 0) { \
+        scePthreadMutexUnlock(&rps.padMutex); \
+        return ret; \
+    }
 
-RemotePadService rps = {
-        .init = init,
-        .term = term,
-        .getPad = getPad,
-        .setLightBar = padSetLightBar,
-        .resetLightBar = padResetLightBar,
-        .setVibration = padSetVibration,
-        .getControllerInformation = padGetControllerInformation,
-        .read = padRead,
-        .readState = padReadState,
-        .getHandle = padGetHandle,
-        .open = padOpen,
-        .close = padClose,
-};
+#define CALL_FUNCTION(func, ...) \
+    if (pad->driver->func) { \
+        ret = pad->driver->func(pad, ## __VA_ARGS__); \
+    } else { \
+        ret = dummyDriver.func(pad, ## __VA_ARGS__); \
+    }
+
+#define RETURN_CODE() \
+    scePthreadMutexUnlock(&rps.padMutex); \
+    return ret;
+
+#define PAD_FUNC_DEF(...) \
+    GET_PAD(handle) \
+    CALL_FUNCTION(__VA_ARGS__) \
+    RETURN_CODE()
 
 static int32_t init() {
     int ret;
@@ -93,14 +76,12 @@ static int32_t getPad(int32_t handle, RemotePad **padPtr) {
     RemotePad *pad = NULL;
     if (padPtr == NULL)
         return ORBIS_PAD_ERROR_INVALID_ARG;
-    scePthreadMutexLock(&rps.padMutex);
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
         if (rps.pads[i].handle == handle) {
             pad = &rps.pads[i];
             break;
         }
     }
-    scePthreadMutexUnlock(&rps.padMutex);
     if (pad == NULL)
         return ORBIS_PAD_ERROR_INVALID_HANDLE;
     else if (pad->userId == 0)
@@ -110,33 +91,35 @@ static int32_t getPad(int32_t handle, RemotePad **padPtr) {
 }
 
 static int32_t padSetLightBar(int32_t handle, OrbisPadColor *inputColor) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->setLightBar(pad, inputColor);
+    PAD_FUNC_DEF(setLightBar, inputColor)
 }
 
 static int32_t padResetLightBar(int32_t handle) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->resetLightBar(pad);
+    PAD_FUNC_DEF(resetLightBar)
 }
 
 static int32_t padSetVibration(int32_t handle, const OrbisPadVibeParam *param) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->setVibration(pad, param);
+    PAD_FUNC_DEF(setVibration, param)
 }
 
 static int32_t padGetControllerInformation(int32_t handle, OrbisPadInformation *info) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->getControllerInformation(pad, info);
+    PAD_FUNC_DEF(getControllerInformation, info)
+}
+
+static int32_t padDeviceClassParseData(int32_t handle, const OrbisPadData *data, OrbisPadDeviceClassData *classData) {
+    PAD_FUNC_DEF(deviceClassParseData, data, classData)
+}
+
+static int32_t padDeviceClassGetExtInfo(int32_t handle, OrbisPadDeviceClassExtInfo *info) {
+    PAD_FUNC_DEF(deviceClassGetExtInfo, info)
 }
 
 static int32_t padRead(int32_t handle, OrbisPadData *data, int32_t count) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->read(pad, data, count);
+    PAD_FUNC_DEF(read, data, count)
 }
 
 static int32_t padReadState(int32_t handle, OrbisPadData *data) {
-    RemotePad *pad = GET_PAD(handle);
-    return pad->driver->readState(pad, data);
+    PAD_FUNC_DEF(readState, data)
 }
 
 static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t controller_index) {
@@ -170,7 +153,7 @@ static int32_t padOpen(int32_t userId, int32_t type, int32_t index, void *param)
         return handle;
     }
 
-    // TODO: 根据配置文件选择驱动
+    // TODO: Choose driver based on configuration file
     rps.pads[index].userId = userId;
     rps.pads[index].driver = &wsDriver;
     handle = rps.pads[index].handle;
@@ -183,10 +166,25 @@ static int32_t padOpen(int32_t userId, int32_t type, int32_t index, void *param)
 }
 
 static int32_t padClose(int32_t handle) {
-    RemotePad *pad = GET_PAD(handle);
-    pad->userId = 0;
-    return pad->driver->close(pad);
+    PAD_FUNC_DEF(close)
 }
+
+RemotePadService rps = {
+        .init = init,
+        .term = term,
+        .getPad = getPad,
+        .setLightBar = padSetLightBar,
+        .resetLightBar = padResetLightBar,
+        .setVibration = padSetVibration,
+        .getControllerInformation = padGetControllerInformation,
+        .deviceClassParseData = padDeviceClassParseData,
+        .deviceClassGetExtInfo = padDeviceClassGetExtInfo,
+        .read = padRead,
+        .readState = padReadState,
+        .getHandle = padGetHandle,
+        .open = padOpen,
+        .close = padClose,
+};
 
 RemotePadService *initRemotePadService() {
     rps.init();

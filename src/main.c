@@ -91,36 +91,15 @@ HOOK_DEFINE(scePadSetVibration, int32_t handle, const OrbisPadVibeParam *param) 
     return HOOK_PASS(scePadSetVibration, handle, param);
 }
 
-typedef struct {
-    int32_t deviceClass;
-    bool bDataValid;
-    uint8_t classData[16];
-} OrbisPadDeviceClassData;
 HOOK_DEFINE(scePadDeviceClassParseData, int32_t handle, const OrbisPadData *data, OrbisPadDeviceClassData *classData) {
-    RemotePad *pad = NULL;
-    remotePad->getPad(handle, &pad);
-    if (pad != NULL) {
-        memset(classData, 0, sizeof(OrbisPadDeviceClassData));
-        classData->deviceClass = ORBIS_PAD_DEVICE_CLASS_PAD;
-        classData->bDataValid = true;
+    if (remotePad->deviceClassParseData(handle, data, classData) == SCE_OK)
         return SCE_OK;
-    }
     return HOOK_PASS(scePadDeviceClassParseData, handle, data, classData);
 }
 
-typedef struct {
-    int32_t deviceClass;
-    uint8_t reserved[4];
-    uint8_t classData[12];
-} OrbisPadDeviceClassExtInfo;
 HOOK_DEFINE(scePadDeviceClassGetExtendedInformation, int32_t handle, OrbisPadDeviceClassExtInfo *info) {
-    RemotePad *pad = NULL;
-    remotePad->getPad(handle, &pad);
-    if (pad != NULL) {
-        memset(info, 0, sizeof(OrbisPadDeviceClassExtInfo));
-        info->deviceClass = ORBIS_PAD_DEVICE_CLASS_PAD;
+    if (remotePad->deviceClassGetExtInfo(handle, info) == SCE_OK)
         return SCE_OK;
-    }
     return HOOK_PASS(scePadDeviceClassGetExtendedInformation, handle, info);
 }
 

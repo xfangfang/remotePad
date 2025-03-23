@@ -11,6 +11,18 @@
 #define REMOTE_PAD_MAX_PADS 4
 #define REMOTE_PAD_MAX_HISTORY 64
 
+typedef struct {
+    int32_t deviceClass;
+    uint8_t reserved[4];
+    uint8_t classData[12];
+} OrbisPadDeviceClassExtInfo;
+
+typedef struct {
+    int32_t deviceClass;
+    bool bDataValid;
+    uint8_t classData[16];
+} OrbisPadDeviceClassData;
+
 typedef struct circularBuf {
     OrbisPadData data[REMOTE_PAD_MAX_HISTORY];
     uint32_t head;
@@ -43,6 +55,10 @@ typedef struct RemotePadDriver {
     int32_t (*setVibration)(RemotePad *pad, const OrbisPadVibeParam *param);
 
     int32_t (*getControllerInformation)(RemotePad *pad, OrbisPadInformation *info);
+
+    int32_t (*deviceClassParseData)(RemotePad *pad, const OrbisPadData *data, OrbisPadDeviceClassData *classData);
+
+    int32_t (*deviceClassGetExtInfo)(RemotePad *pad, OrbisPadDeviceClassExtInfo *info);
 
     int32_t (*read)(RemotePad *pad, OrbisPadData *data, int32_t count);
 
@@ -78,6 +94,10 @@ typedef struct RemotePadService {
     int32_t (*setVibration)(int32_t handle, const OrbisPadVibeParam *param);
 
     int32_t (*getControllerInformation)(int32_t handle, OrbisPadInformation *info);
+
+    int32_t (*deviceClassParseData)(int32_t handle, const OrbisPadData *data, OrbisPadDeviceClassData *classData);
+
+    int32_t (*deviceClassGetExtInfo)(int32_t handle, OrbisPadDeviceClassExtInfo *info);
 
     int32_t (*read)(int32_t handle, OrbisPadData *data, int32_t count);
 

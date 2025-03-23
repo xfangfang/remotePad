@@ -178,11 +178,6 @@ static int32_t wsSetVibration(RemotePad *pad, const OrbisPadVibeParam *param) {
     return 0;
 }
 
-static int32_t wsGetControllerInformation(RemotePad *pad, OrbisPadInformation *info) {
-    emptyPadInfo(info);
-    return 0;
-}
-
 static int32_t wsRead(RemotePad *pad, OrbisPadData *data, int32_t count) {
     wsDriverData *ctx = pad->driver->data;
     int32_t ret;
@@ -197,10 +192,6 @@ static int32_t wsReadState(RemotePad *pad, OrbisPadData *data) {
     scePthreadMutexLock(&ctx->padMutex);
     circularGetLatest(&ctx->padData[pad->index], data);
     scePthreadMutexUnlock(&ctx->padMutex);
-    return 0;
-}
-
-static int32_t wsClose(RemotePad *pad) {
     return 0;
 }
 
@@ -246,9 +237,5 @@ const struct RemotePadDriver wsDriver = {
         .setLightBar = wsSetLightBar,
         .resetLightBar = wsResetLightBar,
         .setVibration = wsSetVibration,
-        .getControllerInformation = wsGetControllerInformation,
-        .read = wsRead,
-        .readState = wsReadState,
-        .close = wsClose,
         .data = &globalDriverData
 };

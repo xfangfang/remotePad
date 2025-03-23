@@ -39,9 +39,9 @@ static const RemotePadDriver *const padDrivers[] = {&dummyDriver, &wsDriver};
     CALL_FUNCTION(__VA_ARGS__) \
     RETURN_CODE()
 
-static int32_t init() {
+static int32_t init(void) {
     int ret;
-    for (int i = 0; i < ARRAY_SIZE(padDrivers); i++) {
+    for (size_t i = 0; i < ARRAY_SIZE(padDrivers); i++) {
         if (padDrivers[i]->init(padDrivers[i]) != 0) {
             return -1;
         }
@@ -61,7 +61,7 @@ static int32_t init() {
     return 0;
 }
 
-static int32_t term() {
+static int32_t term(void) {
     scePthreadMutexLock(&rps.padMutex);
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
         if (rps.pads[i].userId != 0) {
@@ -124,6 +124,8 @@ static int32_t padReadState(int32_t handle, OrbisPadData *data) {
 
 static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t controller_index) {
     int32_t handle = 0;
+    (void)controller_type;
+    (void)controller_index;
     scePthreadMutexLock(&rps.padMutex);
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
         if (rps.pads[i].userId == userId) {
@@ -139,6 +141,8 @@ static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t c
 
 static int32_t padOpen(int32_t userId, int32_t type, int32_t index, void *param) {
     int32_t handle = 0;
+    (void)type;
+    (void)param;
     if (index < 0 || index >= REMOTE_PAD_MAX_PADS)
         return ORBIS_PAD_ERROR_INVALID_ARG;
     scePthreadMutexLock(&rps.padMutex);
@@ -186,7 +190,7 @@ RemotePadService rps = {
         .close = padClose,
 };
 
-RemotePadService *initRemotePadService() {
+RemotePadService *initRemotePadService(void) {
     rps.init();
     return &rps;
 }

@@ -81,9 +81,9 @@ typedef struct RemotePad {
 } RemotePad;
 
 typedef struct RemotePadService {
-    int32_t (*init)();
+    int32_t (*init)(void);
 
-    int32_t (*term)();
+    int32_t (*term)(void);
 
     int32_t (*getPad)(int32_t handle, RemotePad **padPtr);
 
@@ -113,7 +113,7 @@ typedef struct RemotePadService {
     OrbisPthreadMutex padMutex;
 } RemotePadService;
 
-RemotePadService *initRemotePadService();
+RemotePadService *initRemotePadService(void);
 
 void termRemotePadService(RemotePadService *);
 

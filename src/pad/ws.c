@@ -29,7 +29,7 @@ static wsDriverData globalDriverData = {
         .running = false
 };
 
-static void notifyServerAddress() {
+static void notifyServerAddress(void) {
     struct ifaddrs *ifaddr;
     char ip[INET_ADDRSTRLEN];
     if(getifaddrs(&ifaddr) == -1) {

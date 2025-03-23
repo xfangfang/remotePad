@@ -24,7 +24,7 @@ typedef struct ini_table_s {
  * @brief Creates an empty ini_table_s struct for writing new entries to.
  * @return ini_table_s*
  */
-ini_table_s* ini_table_create();
+ini_table_s* ini_table_create(void);
 
 /**
  * @brief Free up all the allocated resources in the ini_table_s struct.

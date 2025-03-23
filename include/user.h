@@ -20,9 +20,9 @@ typedef struct RemoteUser {
 } RemoteUser;
 
 typedef struct RemoteUserService {
-    int32_t (*init)();
+    int32_t (*init)(void);
 
-    int32_t (*term)();
+    int32_t (*term)(void);
 
     RemoteUser *(*getUser)(int32_t userId);
 
@@ -35,7 +35,7 @@ typedef struct RemoteUserService {
     RemoteUser users[REMOTE_PAD_MAX_USERS];
 } RemoteUserService;
 
-RemoteUserService *initRemoteUserService();
+RemoteUserService *initRemoteUserService(void);
 
 void termRemoteUserService(RemoteUserService *);
 

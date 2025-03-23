@@ -70,7 +70,7 @@ static ini_entry_s* _ini_entry_get(ini_table_s* table, const char* section_name,
     return entry;
 }
 
-ini_table_s* ini_table_create() {
+ini_table_s* ini_table_create(void) {
     ini_table_s* table = (ini_table_s*)malloc(sizeof(ini_table_s));
     table->size = 0;
     table->section = (ini_section_s*)malloc(10 * sizeof(ini_section_s));

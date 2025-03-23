@@ -6,9 +6,9 @@
 #include "user.h"
 #include "config.h"
 
-static int32_t init();
+static int32_t init(void);
 
-static int32_t term();
+static int32_t term(void);
 
 static RemoteUser *getUser(int32_t);
 
@@ -27,7 +27,7 @@ static RemoteUserService rus = {
         .setUserName = setUserName,
 };
 
-static int32_t init() {
+static int32_t init(void) {
     for (int i = 0; i < REMOTE_PAD_MAX_USERS; i++) {
         rus.users[i].index = i;
         rus.users[i].userId = 0x20000000 + i; // Guest user id
@@ -40,7 +40,7 @@ static int32_t init() {
     return 0;
 }
 
-static int32_t term() {
+static int32_t term(void) {
     return 0;
 }
 
@@ -90,7 +90,7 @@ static int32_t setUserName(int32_t userId, const char *username) {
     return 0;
 }
 
-RemoteUserService *initRemoteUserService() {
+RemoteUserService *initRemoteUserService(void) {
     rus.init();
     return &rus;
 }

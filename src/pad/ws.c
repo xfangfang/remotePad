@@ -9,8 +9,6 @@
 typedef struct wsDriverData {
     struct mg_mgr mgr;
     struct mg_rpc *rpc_head;
-    circularBuf padData[REMOTE_PAD_MAX_PADS];
-    OrbisPthreadMutex padMutex;
     bool running;
 } wsDriverData;
 
@@ -65,7 +63,6 @@ static inline void climp(uint32_t *val, uint32_t min, uint32_t max) {
 }
 
 static void rpc_update(struct mg_rpc_req *r) {
-    wsDriverData *ctx = r->rpc->fn_data;
     uint32_t index = mg_json_get_long(r->frame, "$.params[0]", 0);
     uint32_t button = mg_json_get_long(r->frame, "$.params[1]", 0);
     uint32_t leftStickX = mg_json_get_long(r->frame, "$.params[2]", 128);
@@ -98,9 +95,8 @@ static void rpc_update(struct mg_rpc_req *r) {
     padData.count = 1;
     padData.connected = 1;
 
-    scePthreadMutexLock(&ctx->padMutex);
-    circularPush(&ctx->padData[index], &padData);
-    scePthreadMutexUnlock(&ctx->padMutex);
+    // Push the data to the pad circular buffer
+    pushPadData(index, &padData);
 }
 
 static void rpc_notify(struct mg_rpc_req *r) {
@@ -178,23 +174,6 @@ static int32_t wsSetVibration(RemotePad *pad, const OrbisPadVibeParam *param) {
     return 0;
 }
 
-static int32_t wsRead(RemotePad *pad, OrbisPadData *data, int32_t count) {
-    wsDriverData *ctx = pad->driver->data;
-    int32_t ret;
-    scePthreadMutexLock(&ctx->padMutex);
-    ret = circularGet(&ctx->padData[pad->index], data, count);
-    scePthreadMutexUnlock(&ctx->padMutex);
-    return ret;
-}
-
-static int32_t wsReadState(RemotePad *pad, OrbisPadData *data) {
-    wsDriverData *ctx = pad->driver->data;
-    scePthreadMutexLock(&ctx->padMutex);
-    circularGetLatest(&ctx->padData[pad->index], data);
-    scePthreadMutexUnlock(&ctx->padMutex);
-    return 0;
-}
-
 static int32_t wsInit(RemotePadDriverPtr driver) {
     wsDriverData *ctx = driver->data;
     int ret = 0;
@@ -203,14 +182,9 @@ static int32_t wsInit(RemotePadDriverPtr driver) {
         return 0;
     }
 
-    ret = scePthreadMutexInit(&ctx->padMutex, 0, "wsSrvMtx");
     if (ret < 0) {
         final_printf("[RemotePad]: failed to init the server mutex, 0x%X\n", ret);
         return -1;
-    }
-
-    for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
-        circularInit(&ctx->padData[i]);
     }
 
     ctx->running = true;

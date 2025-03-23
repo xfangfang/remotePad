@@ -42,15 +42,11 @@ static int32_t dummyDeviceClassGetExtInfo(RemotePad *pad, OrbisPadDeviceClassExt
 }
 
 static int32_t dummyRead(RemotePad *pad, OrbisPadData *data, int32_t count) {
-    (void) pad;
-    (void) count;
-    emptyPadData(data);
-    return 1;
+    return getPadData(pad->index, data, count);
 }
 
 static int32_t dummyReadState(RemotePad *pad, OrbisPadData *data) {
-    (void) pad;
-    emptyPadData(data);
+    getLatestPadData(pad->index, data);
     return 0;
 }
 

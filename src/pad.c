@@ -53,10 +53,17 @@ static int32_t init(void) {
         return -1;
     }
 
+    ret = scePthreadMutexInit(&rps.dataMutex, 0, "dataMtx");
+    if (ret < 0) {
+        final_printf("[RemotePad]: failed to init the data mutex, 0x%X\n", ret);
+        return -1;
+    }
+
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
         rps.pads[i].index = i;
         rps.pads[i].handle = 1000 + i;
         rps.pads[i].userId = 0;
+        initPadData(&rps.pads[i].padData);
     }
     return 0;
 }
@@ -124,8 +131,8 @@ static int32_t padReadState(int32_t handle, OrbisPadData *data) {
 
 static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t controller_index) {
     int32_t handle = 0;
-    (void)controller_type;
-    (void)controller_index;
+    (void) controller_type;
+    (void) controller_index;
     scePthreadMutexLock(&rps.padMutex);
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; i++) {
         if (rps.pads[i].userId == userId) {
@@ -141,8 +148,8 @@ static int32_t padGetHandle(int32_t userId, uint32_t controller_type, uint32_t c
 
 static int32_t padOpen(int32_t userId, int32_t type, int32_t index, void *param) {
     int32_t handle = 0;
-    (void)type;
-    (void)param;
+    (void) type;
+    (void) param;
     if (index < 0 || index >= REMOTE_PAD_MAX_PADS)
         return ORBIS_PAD_ERROR_INVALID_ARG;
     scePthreadMutexLock(&rps.padMutex);
@@ -222,30 +229,50 @@ void emptyPadInfo(OrbisPadInformation *info) {
     info->touchpadDensity = 44.86f;
 }
 
-void circularInit(circularBuf *buf) {
+void initPadData(circularBuf *buf) {
     memset(buf, 0, sizeof(circularBuf));
     // If there is no data at start, this empty data will be returned
     emptyPadData(&buf->data[REMOTE_PAD_MAX_HISTORY - 1]);
 }
 
-void circularPush(circularBuf *buf, OrbisPadData *data) {
+void pushPadData(size_t index, OrbisPadData *data) {
+    if (index >= REMOTE_PAD_MAX_PADS) {
+        return;
+    }
+    scePthreadMutexLock(&rps.dataMutex);
+    circularBuf *buf = &rps.pads[index].padData;
     memcpy(&buf->data[buf->head], data, sizeof(OrbisPadData));
     buf->head = (buf->head + 1) % REMOTE_PAD_MAX_HISTORY;
     if (buf->head == buf->tail)
         buf->tail = (buf->tail + 1) % REMOTE_PAD_MAX_HISTORY;
+    scePthreadMutexUnlock(&rps.dataMutex);
 }
 
-void circularGetLatest(circularBuf *buf, OrbisPadData *data) {
+void getLatestPadData(size_t index, OrbisPadData *data) {
+    if (index >= REMOTE_PAD_MAX_PADS) {
+        emptyPadData(data);
+        return;
+    }
+    scePthreadMutexLock(&rps.dataMutex);
+    circularBuf *buf = &rps.pads[index].padData;
     uint32_t lastDataIndex = (buf->head + REMOTE_PAD_MAX_HISTORY - 1) % REMOTE_PAD_MAX_HISTORY;
     memcpy(data, &buf->data[lastDataIndex], sizeof(OrbisPadData));
+    scePthreadMutexUnlock(&rps.dataMutex);
 }
 
-int32_t circularGet(circularBuf *buf, OrbisPadData *data, int32_t count) {
+int32_t getPadData(size_t index, OrbisPadData *data, int32_t count) {
+    if (index >= REMOTE_PAD_MAX_PADS) {
+        emptyPadData(data);
+        return 0;
+    }
+    scePthreadMutexLock(&rps.dataMutex);
+    circularBuf *buf = &rps.pads[index].padData;
     int32_t ret = 0;
     if (count > REMOTE_PAD_MAX_HISTORY)
         count = REMOTE_PAD_MAX_HISTORY;
     if (buf->tail == buf->head) {
         emptyPadData(data);
+        scePthreadMutexUnlock(&rps.dataMutex);
         return 0;
     }
     while (count > 0 && buf->tail != buf->head) {
@@ -255,6 +282,6 @@ int32_t circularGet(circularBuf *buf, OrbisPadData *data, int32_t count) {
         count--;
         ret++;
     }
-
+    scePthreadMutexUnlock(&rps.dataMutex);
     return ret;
 }

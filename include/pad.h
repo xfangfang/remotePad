@@ -33,16 +33,16 @@ void emptyPadInfo(OrbisPadInformation *info);
 
 void emptyPadData(OrbisPadData *data);
 
-void circularInit(circularBuf *buf);
+void initPadData(circularBuf *buf);
 
-void circularPush(circularBuf *buf, OrbisPadData *data);
+void pushPadData(size_t index, OrbisPadData *data);
 
-void circularGetLatest(circularBuf *buf, OrbisPadData *data);
+void getLatestPadData(size_t index, OrbisPadData *data);
 
-int32_t circularGet(circularBuf *buf, OrbisPadData *data, int32_t count);
+int32_t getPadData(size_t index, OrbisPadData *data, int32_t count);
 
 typedef struct RemotePad RemotePad;
-typedef const struct RemotePadDriver *const RemotePadDriverPtr;
+typedef const struct RemotePadDriver *RemotePadDriverPtr;
 typedef struct RemotePadDriver {
     int32_t (*init)(RemotePadDriverPtr driver);
 
@@ -69,7 +69,7 @@ typedef struct RemotePadDriver {
     // Driver specific global data
     void *data;
 
-    const char* name;
+    const char *name;
 } RemotePadDriver;
 
 typedef struct RemotePad {
@@ -78,6 +78,7 @@ typedef struct RemotePad {
     int32_t userId;
 
     const RemotePadDriver *driver;
+    circularBuf padData;
 } RemotePad;
 
 typedef struct RemotePadService {
@@ -111,6 +112,7 @@ typedef struct RemotePadService {
 
     RemotePad pads[REMOTE_PAD_MAX_PADS];
     OrbisPthreadMutex padMutex;
+    OrbisPthreadMutex dataMutex;
 } RemotePadService;
 
 RemotePadService *initRemotePadService(void);

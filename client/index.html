@@ -132,7 +132,7 @@
         width: 30vw;
         height: 20vw;
         position: relative;
-        top: -10vw;
+        top: -9vw;
       }
 
       #pad {
@@ -285,7 +285,7 @@
         },
         callVoid: function(method, params) {
           if (ws.readyState !== WebSocket.OPEN) return;
-          const id = rpcid++, request = {id, method, params};
+          const request = {method, params};
           ws.send(JSON.stringify(request));
         },
       };
@@ -430,6 +430,7 @@
     let GamepadButton = 0;
     let leftStickX = 128, leftStickY = 128, rightStickX = 128, rightStickY = 128;
     let left2 = 0, right2 = 0;
+    let lastSentData = [];
 
     // Touch/mouse click generated button value, combined with GamepadButton and sent to the server
     let MouseButton = 0;
@@ -528,7 +529,12 @@
       cr_pad.style.top = `${(rsy / 255 * 10)}vw`;
       cr_pad.style.left = `${(rsx / 255 * 10)}vw`;
 
-      rpc.callVoid('u', [Number(pad.value), button_send, lsx, lsy, rsx, rsy, left2_send, right2_send]);
+      // Check if last sent data is the same as the current data, if so, don't send it again
+      let data = [Number(pad.value), button_send, lsx, lsy, rsx, rsy, left2_send, right2_send];
+      if (JSON.stringify(lastSentData) === JSON.stringify(data))
+        return;
+      lastSentData = data.slice();
+      rpc.callVoid('u', data);
     }
 
     cl_pad.style.top = "5vw";
@@ -722,7 +728,7 @@
         }
         controller.vibrationActuator.playEffect("dual-rumble", {
           startDelay: 0,
-          duration: 1000,
+          duration: 100,
           weakMagnitude: small_motor / 255,
           strongMagnitude: large_motor / 255,
         });

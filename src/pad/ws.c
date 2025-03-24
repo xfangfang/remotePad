@@ -11,6 +11,7 @@ typedef struct wsDriverData {
     struct mg_rpc *rpc_head;
     OrbisPthreadMutex dataMutex;
     circularBuf *vibrationData[REMOTE_PAD_MAX_PADS];
+    OrbisPadVibeParam lastVibration[REMOTE_PAD_MAX_PADS];
     bool running;
 } wsDriverData;
 
@@ -166,9 +167,19 @@ void *websocketThread(void *thread_arg) {
             int count = getData(ctx->vibrationData[i], vibeParam, REMOTE_PAD_MAX_HISTORY);
             if (count > 0) {
                 // Send the latest vibration data to the connected clients
+                uint8_t lgMotor = vibeParam[count - 1].lgMotor;
+                uint8_t smMotor = vibeParam[count - 1].smMotor;
+                if (lgMotor == ctx->lastVibration[i].lgMotor &&
+                    smMotor == ctx->lastVibration[i].smMotor &&
+                    lgMotor == 0 && smMotor == 0) {
+                    // Some games keep sending empty vibration data. Ignore it to reduce traffic.
+                    continue;
+                }
+                ctx->lastVibration[i].lgMotor = lgMotor;
+                ctx->lastVibration[i].smMotor = smMotor;
                 wsBroadcast(&ctx->mgr, "{%m:%m,%m:[%d,%d,%d]}",
                             MG_ESC("method"), MG_ESC("vibration"), MG_ESC("params"),
-                            i, vibeParam[count - 1].lgMotor, vibeParam[count - 1].smMotor);
+                            i, lgMotor, smMotor);
             }
         }
         scePthreadMutexUnlock(&ctx->dataMutex);

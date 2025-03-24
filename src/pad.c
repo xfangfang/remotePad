@@ -78,6 +78,9 @@ static int32_t term(void) {
         }
     }
     scePthreadMutexUnlock(&rps.padMutex);
+    for (size_t i = 0; i < ARRAY_SIZE(padDrivers); i++) {
+        padDrivers[i]->term(padDrivers[i]);
+    }
     return 0;
 }
 

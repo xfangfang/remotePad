@@ -11,7 +11,7 @@ typedef struct circularBuf {
     uint32_t dataSize;
     uint32_t maxHistory;
 
-    void (*emptyData)(void *);
+    void (*clearData)(void *);
 
     char data[];
 } circularBuf;
@@ -22,7 +22,7 @@ int initData(circularBuf **buf, uint32_t dataSize, uint32_t maxHistory, void (*e
 
 void termData(circularBuf *buf);
 
-void pushData(circularBuf *buf, void *data);
+void pushData(circularBuf *buf, const void *data);
 
 void getLatestData(circularBuf *buf, void *data);
 

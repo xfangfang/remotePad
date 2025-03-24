@@ -4,6 +4,8 @@
 #include <orbis/_types/user.h>
 #include <orbis/_types/pthread.h>
 
+#include "common_data.h"
+
 #ifndef REMOTE_PAD_PAD_H
 #define REMOTE_PAD_PAD_H
 
@@ -23,17 +25,11 @@ typedef struct {
     uint8_t classData[16];
 } OrbisPadDeviceClassData;
 
-typedef struct circularBuf {
-    OrbisPadData data[REMOTE_PAD_MAX_HISTORY];
-    uint32_t head;
-    uint32_t tail;
-} circularBuf;
-
 void emptyPadInfo(OrbisPadInformation *info);
 
 void emptyPadData(OrbisPadData *data);
 
-void initPadData(circularBuf *buf);
+void initPadData(size_t index);
 
 void pushPadData(size_t index, OrbisPadData *data);
 
@@ -78,7 +74,7 @@ typedef struct RemotePad {
     int32_t userId;
 
     const RemotePadDriver *driver;
-    circularBuf padData;
+    circularBuf *padData;
 } RemotePad;
 
 typedef struct RemotePadService {

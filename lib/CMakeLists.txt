@@ -15,11 +15,8 @@ if (DEBUG_SDK)
     list(APPEND GoldHEN_SDK_BUIILD_FLAG DEBUGFLAGS=1)
 endif ()
 add_custom_target(goldhen_sdk
-    COMMAND git checkout -- ${GoldHEN_SDK_DIR}/Makefile
-    COMMAND git apply --stat --apply ${CMAKE_CURRENT_SOURCE_DIR}/goldhen.patch
     COMMAND ${CMAKE_MAKE_PROGRAM} crt ${GoldHEN_SDK_BUIILD_FLAG}
     COMMAND ${CMAKE_MAKE_PROGRAM} libGoldHEN_Hook.a ${GoldHEN_SDK_BUIILD_FLAG}
-    COMMAND git checkout -- ${GoldHEN_SDK_DIR}/Makefile
     WORKING_DIRECTORY ${GoldHEN_SDK_DIR}
     DEPENDS ${GoldHEN_SOURCE_FILES}
 )

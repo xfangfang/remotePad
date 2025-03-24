@@ -50,6 +50,14 @@ typedef struct RemotePadDriver {
 
     int32_t (*setVibration)(RemotePad *pad, const OrbisPadVibeParam *param);
 
+    int32_t (*resetOrientation)(RemotePad *pad);
+
+    int32_t (*setMotionSensorState)(RemotePad *pad, bool enable);
+
+    int32_t (*setTiltCorrectionState)(RemotePad *pad, bool enable);
+
+    int32_t (*setAngularVelocityDeadbandState)(RemotePad *pad, bool enable);
+
     int32_t (*getControllerInformation)(RemotePad *pad, OrbisPadInformation *info);
 
     int32_t (*deviceClassParseData)(RemotePad *pad, const OrbisPadData *data, OrbisPadDeviceClassData *classData);
@@ -89,6 +97,14 @@ typedef struct RemotePadService {
     int32_t (*resetLightBar)(int32_t handle);
 
     int32_t (*setVibration)(int32_t handle, const OrbisPadVibeParam *param);
+
+    int32_t (*resetOrientation)(int32_t handle);
+
+    int32_t (*setMotionSensorState)(int32_t handle, bool enable);
+
+    int32_t (*setTiltCorrectionState)(int32_t handle, bool enable);
+
+    int32_t (*setAngularVelocityDeadbandState)(int32_t handle, bool enable);
 
     int32_t (*getControllerInformation)(int32_t handle, OrbisPadInformation *info);
 

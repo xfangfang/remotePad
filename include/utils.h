@@ -50,3 +50,5 @@ int32_t load_prx(const char *name, bool syscall);
 // Takes hardcoded input string 2 to strlen against during compile time.
 // startsWith(input_1, "input 2");
 #define startsWith(str1, str2) (strncmp(str1, str2, __builtin_strlen(str2)) == 0)
+
+bool file_exists(const char *filename);

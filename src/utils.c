@@ -46,3 +46,8 @@ void Notify(const char *p_Uri, const char *p_Format, ...) {
 
     sceKernelSendNotificationRequest(NotificationRequest, &s_Request, sizeof(s_Request), 0);
 }
+
+bool file_exists(const char *filename) {
+    struct stat buff;
+    return stat(filename, &buff) == 0 ? true : false;
+}

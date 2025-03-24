@@ -19,6 +19,29 @@ static int32_t dummySetVibration(RemotePad *pad, const OrbisPadVibeParam *param)
     return 0;
 }
 
+static int32_t dummyResetOrientation(RemotePad *pad) {
+    (void) pad;
+    return 0;
+}
+
+static int32_t dummySetMotionSensorState(RemotePad *pad, bool enable) {
+    (void) pad;
+    (void) enable;
+    return 0;
+}
+
+static int32_t dummySetTiltCorrectionState(RemotePad *pad, bool enable) {
+    (void) pad;
+    (void) enable;
+    return 0;
+}
+
+static int32_t dymmySetAngularVelocityDeadbandState(RemotePad *pad, bool enable) {
+    (void) pad;
+    (void) enable;
+    return 0;
+}
+
 static int32_t dummyGetControllerInformation(RemotePad *pad, OrbisPadInformation *info) {
     (void) pad;
     emptyPadInfo(info);
@@ -72,6 +95,10 @@ const struct RemotePadDriver dummyDriver = {
         .setLightBar = dummySetLightBar,
         .resetLightBar = dummyResetLightBar,
         .setVibration = dummySetVibration,
+        .resetOrientation = dummyResetOrientation,
+        .setMotionSensorState = dummySetMotionSensorState,
+        .setTiltCorrectionState = dummySetTiltCorrectionState,
+        .setAngularVelocityDeadbandState = dymmySetAngularVelocityDeadbandState,
         .getControllerInformation = dummyGetControllerInformation,
         .deviceClassParseData = dummyDeviceClassParseData,
         .deviceClassGetExtInfo = dummyDeviceClassGetExtInfo,

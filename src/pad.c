@@ -114,6 +114,22 @@ static int32_t padSetVibration(int32_t handle, const OrbisPadVibeParam *param) {
     PAD_FUNC_DEF(setVibration, param)
 }
 
+static int32_t padResetOrientation(int32_t handle) {
+    PAD_FUNC_DEF(resetOrientation)
+}
+
+static int32_t padSetMotionSensorState(int32_t handle, bool enable) {
+    PAD_FUNC_DEF(setMotionSensorState, enable)
+}
+
+static int32_t padSetTiltCorrectionState(int32_t handle, bool enable) {
+    PAD_FUNC_DEF(setTiltCorrectionState, enable)
+}
+
+static int32_t padSetAngularVelocityDeadbandState(int32_t handle, bool enable) {
+    PAD_FUNC_DEF(setAngularVelocityDeadbandState, enable)
+}
+
 static int32_t padGetControllerInformation(int32_t handle, OrbisPadInformation *info) {
     PAD_FUNC_DEF(getControllerInformation, info)
 }
@@ -192,6 +208,9 @@ RemotePadService rps = {
         .setLightBar = padSetLightBar,
         .resetLightBar = padResetLightBar,
         .setVibration = padSetVibration,
+        .setMotionSensorState = padSetMotionSensorState,
+        .setTiltCorrectionState = padSetTiltCorrectionState,
+        .setAngularVelocityDeadbandState = padSetAngularVelocityDeadbandState,
         .getControllerInformation = padGetControllerInformation,
         .deviceClassParseData = padDeviceClassParseData,
         .deviceClassGetExtInfo = padDeviceClassGetExtInfo,

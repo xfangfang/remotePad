@@ -57,14 +57,14 @@ HOOK_DEFINE(scePadGetHandle, int32_t userId, uint32_t controller_type, uint32_t 
 HOOK_DEFINE(scePadReadState, int32_t handle, OrbisPadData *data) {
     if (remotePad->readState(handle, data) == SCE_OK)
         return SCE_OK;
-    return scePadReadStateExt(handle, data);
+    return HOOK_PASS(scePadReadState, handle, data);
 }
 
 HOOK_DEFINE(scePadRead, int32_t handle, OrbisPadData *data, int32_t count) {
     int32_t ret = remotePad->read(handle, data, count);
     if (ret >= 0)
         return ret;
-    return scePadReadExt(handle, data, count);
+    return HOOK_PASS(scePadRead, handle, data, count);
 }
 
 HOOK_DEFINE(scePadGetControllerInformation, int32_t handle, OrbisPadInformation *info) {
@@ -91,6 +91,30 @@ HOOK_DEFINE(scePadSetVibration, int32_t handle, const OrbisPadVibeParam *param) 
     return HOOK_PASS(scePadSetVibration, handle, param);
 }
 
+HOOK_DEFINE(scePadResetOrientation, int32_t handle) {
+    if (remotePad->resetOrientation(handle) == SCE_OK)
+        return SCE_OK;
+    return HOOK_PASS(scePadResetOrientation, handle);
+}
+
+HOOK_DEFINE(scePadSetMotionSensorState, int32_t handle, bool enable) {
+    if (remotePad->setMotionSensorState(handle, enable) == SCE_OK)
+        return SCE_OK;
+    return HOOK_PASS(scePadSetMotionSensorState, handle, enable);
+}
+
+HOOK_DEFINE(scePadSetTiltCorrectionState, int32_t handle, bool enable) {
+    if (remotePad->setTiltCorrectionState(handle, enable) == SCE_OK)
+        return SCE_OK;
+    return HOOK_PASS(scePadSetTiltCorrectionState, handle, enable);
+}
+
+HOOK_DEFINE(scePadSetAngularVelocityDeadbandState, int32_t handle, bool enable) {
+    if (remotePad->setAngularVelocityDeadbandState(handle, enable) == SCE_OK)
+        return SCE_OK;
+    return HOOK_PASS(scePadSetAngularVelocityDeadbandState, handle, enable);
+}
+
 HOOK_DEFINE(scePadDeviceClassParseData, int32_t handle, const OrbisPadData *data, OrbisPadDeviceClassData *classData) {
     if (remotePad->deviceClassParseData(handle, data, classData) == SCE_OK)
         return SCE_OK;
@@ -110,7 +134,7 @@ HOOK_DEFINE(sceUserServiceGetUserName, int32_t userId, char *username, size_t si
 }
 
 inline static RemoteUser *findFreeUser(int32_t *index) {
-    while(*index < REMOTE_PAD_MAX_USERS) {
+    while (*index < REMOTE_PAD_MAX_USERS) {
         RemoteUser *user = &remoteUserService->users[*index];
         if (user->enabled && !user->isSystemUserId)
             return user;
@@ -181,20 +205,16 @@ HOOK_DEFINE(sceUserServiceGetEvent, OrbisUserServiceEvent *event) {
     return ret;
 }
 
-inline static bool file_exists(const char* filename) {
-    struct stat buff;
-    return stat(filename, &buff) == 0 ? true : false;
-}
 
-int32_t load_config(ini_table_s* table, const char* section_name) {
+int32_t load_config(ini_table_s *table, const char *section_name) {
     char key[16];
-    for(int i = 0; i < REMOTE_PAD_MAX_USERS; i++) {
+    for (int i = 0; i < REMOTE_PAD_MAX_USERS; i++) {
         snprintf(key, sizeof(key), "user%d_enabled", i);
         ini_table_get_entry_as_bool(table, section_name, key, &remoteUserService->users[i].enabled);
         snprintf(key, sizeof(key), "user%d_id", i);
         ini_table_get_entry_as_int(table, section_name, key, &remoteUserService->users[i].userId);
         snprintf(key, sizeof(key), "user%d_name", i);
-        const char* name = ini_table_get_entry(table, section_name, key);
+        const char *name = ini_table_get_entry(table, section_name, key);
         remoteUserService->setUserName(remoteUserService->users[i].userId, name);
     }
     return 0;
@@ -225,18 +245,6 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
         return -1;
     }
 
-    // scePadReadExt => scePadRead
-    scePadReadExtPatcher = (Patcher *) malloc(sizeof(Patcher));
-    Patcher_Construct(scePadReadExtPatcher);
-    uint8_t xor_ecx_ecx[5] = {0x31, 0xC9, 0x90, 0x90, 0x90};
-    Patcher_Install_Patch(scePadReadExtPatcher, (uint64_t) scePadReadExt, xor_ecx_ecx, sizeof(xor_ecx_ecx));
-
-    // scePadReadStateExt => scePadReadState
-    scePadReadStateExtPatcher = (Patcher *) malloc(sizeof(Patcher));
-    Patcher_Construct(scePadReadStateExtPatcher);
-    uint8_t xor_edx_edx[5] = {0x31, 0xD2, 0x90, 0x90, 0x90};
-    Patcher_Install_Patch(scePadReadStateExtPatcher, (uint64_t) scePadReadStateExt, xor_edx_edx, sizeof(xor_edx_edx));
-
     // sceUserServiceGetPsnPasswordForDebug => sceUserServiceGetUserName
     sceUserServiceGetPsnPasswordForDebugPatcher = (Patcher *) malloc(sizeof(Patcher));
     Patcher_Construct(sceUserServiceGetPsnPasswordForDebugPatcher);
@@ -252,6 +260,10 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
     HOOK32(scePadSetLightBar);
     HOOK32(scePadResetLightBar);
     HOOK32(scePadSetVibration);
+    HOOK32(scePadResetOrientation);
+    HOOK32(scePadSetMotionSensorState);
+    HOOK32(scePadSetTiltCorrectionState);
+    HOOK32(scePadSetAngularVelocityDeadbandState);
     HOOK32(scePadDeviceClassParseData);
     HOOK32(scePadDeviceClassGetExtendedInformation);
     HOOK32(scePadClose);
@@ -274,7 +286,7 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
         return 0;
     }
 
-    ini_table_s* config = ini_table_create();
+    ini_table_s *config = ini_table_create();
     if (config == NULL) {
         final_printf("Config parser failed to initialise\n");
         return -1;
@@ -287,7 +299,7 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
 
     final_printf("Section is TitleID [%s]\n", procInfo.titleid);
     for (int i = 0; i < config->size; i++) {
-        ini_section_s* section = &config->section[i];
+        ini_section_s *section = &config->section[i];
 
         if (section == NULL) continue;
 
@@ -324,6 +336,12 @@ int32_t attr_public plugin_unload(int32_t argc, const char *argv[]) {
     UNHOOK(scePadSetLightBar);
     UNHOOK(scePadResetLightBar);
     UNHOOK(scePadSetVibration);
+    UNHOOK(scePadResetOrientation);
+    UNHOOK(scePadSetMotionSensorState);
+    UNHOOK(scePadSetTiltCorrectionState);
+    UNHOOK(scePadSetAngularVelocityDeadbandState);
+    UNHOOK(scePadDeviceClassParseData);
+    UNHOOK(scePadDeviceClassGetExtendedInformation);
     UNHOOK(scePadClose);
 
     UNHOOK(sceUserServiceGetLoginUserIdList);

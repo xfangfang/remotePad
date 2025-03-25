@@ -130,7 +130,13 @@ HOOK_DEFINE(scePadDeviceClassGetExtendedInformation, int32_t handle, OrbisPadDev
 HOOK_DEFINE(sceUserServiceGetUserName, int32_t userId, char *username, size_t size) {
     if (remoteUserService->getUserName(userId, username, size) == SCE_OK)
         return SCE_OK;
-    return sceUserServiceGetPsnPasswordForDebug(userId, username, size);
+    return HOOK_PASS(sceUserServiceGetUserName, userId, username, size);
+}
+
+HOOK_DEFINE(sceUserServiceGetUserColor, int32_t userId, OrbisUserServiceUserColor *color) {
+    if (remoteUserService->getUserColor(userId, color) == SCE_OK)
+        return SCE_OK;
+    return HOOK_PASS(sceUserServiceGetUserColor, userId, color);
 }
 
 inline static RemoteUser *findFreeUser(int32_t *index) {
@@ -245,13 +251,6 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
         return -1;
     }
 
-    // sceUserServiceGetPsnPasswordForDebug => sceUserServiceGetUserName
-    sceUserServiceGetPsnPasswordForDebugPatcher = (Patcher *) malloc(sizeof(Patcher));
-    Patcher_Construct(sceUserServiceGetPsnPasswordForDebugPatcher);
-    uint8_t mov_esi_01[5] = {0xBE, 0x01, 0x00, 0x00, 0x00};
-    Patcher_Install_Patch(sceUserServiceGetPsnPasswordForDebugPatcher,
-                          (uint64_t) sceUserServiceGetPsnPasswordForDebug + 17, mov_esi_01, sizeof(mov_esi_01));
-
     HOOK32(scePadOpen);
     HOOK32(scePadGetHandle);
     HOOK32(scePadRead);
@@ -269,6 +268,7 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
     HOOK32(scePadClose);
 
     HOOK32(sceUserServiceGetLoginUserIdList);
+    HOOK32(sceUserServiceGetUserColor);
     HOOK32(sceUserServiceGetUserName);
     HOOK32(sceUserServiceGetEvent);
 
@@ -345,6 +345,7 @@ int32_t attr_public plugin_unload(int32_t argc, const char *argv[]) {
     UNHOOK(scePadClose);
 
     UNHOOK(sceUserServiceGetLoginUserIdList);
+    UNHOOK(sceUserServiceGetUserColor);
     UNHOOK(sceUserServiceGetUserName);
     UNHOOK(sceUserServiceGetEvent);
 

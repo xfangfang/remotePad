@@ -18,6 +18,8 @@ static int32_t getUserName(int32_t userId, char *username, size_t size);
 
 static int32_t setUserName(int32_t userId, const char *username);
 
+static int32_t getUserColor(int32_t userId, OrbisUserServiceUserColor *color);
+
 static RemoteUserService rus = {
         .init = init,
         .term = term,
@@ -25,6 +27,7 @@ static RemoteUserService rus = {
         .getUserByIndex = getUserByIndex,
         .getUserName = getUserName,
         .setUserName = setUserName,
+        .getUserColor = getUserColor,
 };
 
 static int32_t init(void) {
@@ -86,6 +89,16 @@ static int32_t setUserName(int32_t userId, const char *username) {
     }
 
     strcpy(user->userName, username);
+
+    return 0;
+}
+
+static int32_t getUserColor(int32_t userId, OrbisUserServiceUserColor *color) {
+    RemoteUser *user = rus.getUser(userId);
+    if (user == NULL)
+        return ORBIS_USER_SERVICE_ERROR_NOT_LOGGED_IN;
+
+    *color = (OrbisUserServiceUserColor) (userId % 4);
 
     return 0;
 }

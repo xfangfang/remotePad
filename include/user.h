@@ -32,6 +32,8 @@ typedef struct RemoteUserService {
 
     int32_t (*setUserName)(int32_t userId, const char *username);
 
+    int32_t (*getUserColor)(int32_t userId, OrbisUserServiceUserColor *color);
+
     RemoteUser users[REMOTE_PAD_MAX_USERS];
 } RemoteUserService;
 

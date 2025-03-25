@@ -18,10 +18,6 @@ attr_public uint32_t g_pluginVersion = 0x00000110; // 1.1.0
 #define PLUGIN_CONFIG_PATH GOLDHEN_PATH "/remote_pad.ini"
 #define PLUGIN_DEFAULT_SECTION "default"
 
-static Patcher *scePadReadExtPatcher;
-static Patcher *scePadReadStateExtPatcher;
-static Patcher *sceUserServiceGetPsnPasswordForDebugPatcher;
-
 static RemoteUserService *remoteUserService;
 static RemotePadService *remotePad;
 
@@ -228,6 +224,7 @@ int32_t load_config(ini_table_s *table, const char *section_name) {
 
 int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
     final_printf("[GoldHEN] %s Plugin Started.\n", g_pluginName);
+    final_printf("[GoldHEN] Git version: %s\n", STR(BUILD_TAG_VERSION));
     final_printf("[GoldHEN] <%s\\Ver.0x%08x> %s\n", g_pluginName, g_pluginVersion, __func__);
     final_printf("[GoldHEN] Plugin Author(s): %s\n", g_pluginAuth);
 
@@ -320,6 +317,7 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
 int32_t attr_public plugin_unload(int32_t argc, const char *argv[]) {
     final_printf("[GoldHEN] <%s\\Ver.0x%08x> %s\n", g_pluginName, g_pluginVersion, __func__);
     final_printf("[GoldHEN] %s Plugin Unloaded.\n", g_pluginName);
+    Notify(TEX_ICON_SYSTEM, "RemotePad Plugin Unloaded");
 
     // If the prx is not loaded correctly, then we exit directly
     if (!prxLoaded)
@@ -348,13 +346,6 @@ int32_t attr_public plugin_unload(int32_t argc, const char *argv[]) {
     UNHOOK(sceUserServiceGetUserColor);
     UNHOOK(sceUserServiceGetUserName);
     UNHOOK(sceUserServiceGetEvent);
-
-    Patcher_Destroy(scePadReadExtPatcher);
-    Patcher_Destroy(scePadReadStateExtPatcher);
-    Patcher_Destroy(sceUserServiceGetPsnPasswordForDebugPatcher);
-    free(scePadReadExtPatcher);
-    free(scePadReadStateExtPatcher);
-    free(sceUserServiceGetPsnPasswordForDebugPatcher);
     return 0;
 }
 

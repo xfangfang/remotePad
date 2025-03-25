@@ -6,6 +6,9 @@
 #define TEX_ICON_SYSTEM "cxml://psnotification/tex_icon_system"
 #define MAX_PATH_ 260
 
+#define STR_IMPL(x) #x
+#define STR(x) STR_IMPL(x)
+
 #define attr_module_hidden __attribute__((weak)) __attribute__((visibility("hidden")))
 #define attr_public __attribute__((visibility("default")))
 

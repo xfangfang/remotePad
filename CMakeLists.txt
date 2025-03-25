@@ -9,6 +9,7 @@ endif ()
 set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/ps4.cmake" CACHE PATH "toolchain file")
 
 project(remote_pad C)
+git_info(GIT_TAG_VERSION GIT_TAG_SHORT)
 
 add_subdirectory(lib)
 
@@ -27,6 +28,7 @@ add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${CMAKE_BINARY_DIR}/static.c)
 target_include_directories(${PROJECT_NAME} PRIVATE include lib/GoldHEN_Plugins_SDK/include)
 target_link_libraries(${PROJECT_NAME} SceSysmodule SceUserService ScePad SceNet mongoose ${GoldHEN_SDK_TARGET})
 target_link_options(${PROJECT_NAME} PRIVATE --gc-sections)
+target_compile_options(${PROJECT_NAME} PRIVATE -DBUILD_TAG_VERSION=${GIT_TAG_VERSION} -DBUILD_TAG_SHORT=${GIT_TAG_SHORT})
 add_dependencies(${PROJECT_NAME} goldhen_sdk)
 add_prx(${PROJECT_NAME})
 

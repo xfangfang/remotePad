@@ -146,6 +146,14 @@
       #connect {
         color: black;
       }
+
+      #version {
+        position: absolute;
+        bottom: 0.5vw;
+        right: 0.5vw;
+        font-size: 0.5vw;
+        color: #888;
+      }
     </style>
   </head>
   <body>
@@ -222,6 +230,7 @@
         </div>
       </div>
     </div>
+    <span id="version"></span>
   </body>
   <script>
     const OrbisPadButton =
@@ -272,7 +281,6 @@
         call: function(method, params) {
           const id = rpcid++, request = {id, method, params};
           ws.send(JSON.stringify(request));
-          console.log('sent', request);
           return new Promise(function(resolve, reject) {
             setTimeout(function() {
               if (pending[id] === undefined) return;
@@ -463,7 +471,12 @@
         return;
       }
       rpc = jsonrpc("ws://" + url.value,
-            () => setGamePadStatus(true),
+            () => {
+              setGamePadStatus(true);
+              rpc.call('info', []).then((res) => {
+                E('version').innerHTML = res.result.version;
+              });
+            },
             () => setGamePadStatus(false),
             msg => {
               if (msg.method === 'vibration') {

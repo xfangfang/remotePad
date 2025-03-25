@@ -108,6 +108,10 @@ static void rpc_notify(struct mg_rpc_req *r) {
     free(text);
 }
 
+static void rpc_info(struct mg_rpc_req *r) {
+    mg_rpc_ok(r, "{%m:%m}", MG_ESC("version"), MG_ESC(STR(BUILD_TAG_VERSION)));
+}
+
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_OPEN) {
         // c->is_hexdumping = 1;
@@ -152,6 +156,7 @@ void *websocketThread(void *thread_arg) {
 
     mg_rpc_add(&ctx->rpc_head, mg_str("u"), rpc_update, ctx);
     mg_rpc_add(&ctx->rpc_head, mg_str("notify"), rpc_notify, ctx);
+    mg_rpc_add(&ctx->rpc_head, mg_str("info"), rpc_info, ctx);
     mg_rpc_add(&ctx->rpc_head, mg_str("rpc.list"), mg_rpc_list, &ctx->rpc_head);
 
     final_printf("Starting WS listener on %s\n", s_listen_on);
@@ -244,7 +249,10 @@ static int32_t wsTerm(RemotePadDriverPtr driver) {
     if (!ctx)
         return -1;
 
-    ctx->running = false;
+    if (ctx->running) {
+        ctx->running = false;
+        scePthreadJoin(serverThread, 0);
+    }
 
     for (int i = 0; i < REMOTE_PAD_MAX_PADS; ++i) {
         if (ctx->vibrationData[i] == NULL)

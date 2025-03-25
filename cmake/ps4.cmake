@@ -114,3 +114,27 @@ function(add_prx project)
             DEPENDS "${project}.prx"
     )
 endfunction()
+
+function(git_info tag short)
+    # Add git info
+    find_package(Git)
+    if(GIT_EXECUTABLE)
+        execute_process(COMMAND git describe --tags
+                TIMEOUT 5
+                OUTPUT_VARIABLE GIT_TAG_VERSION
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        execute_process(COMMAND git rev-parse --short HEAD
+                TIMEOUT 5
+                OUTPUT_VARIABLE GIT_TAG_SHORT
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        message(STATUS "building from git tag: ${GIT_TAG_VERSION}")
+        message(STATUS "building from git commit: ${GIT_TAG_SHORT}")
+    else ()
+        set(GIT_TAG_VERSION "")
+        set(GIT_TAG_SHORT "")
+    endif ()
+    set(${tag} ${GIT_TAG_VERSION} PARENT_SCOPE)
+    set(${short} ${GIT_TAG_SHORT} PARENT_SCOPE)
+endfunction()

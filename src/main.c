@@ -1,9 +1,7 @@
 #include <stdio.h>
-#include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
 #include <string.h>
-#include <Patcher.h>
 
 #include "utils.h"
 #include "pad.h"
@@ -22,12 +20,6 @@ static RemoteUserService *remoteUserService;
 static RemotePadService *remotePad;
 
 static bool prxLoaded = false;
-
-int32_t scePadReadExt(int32_t, OrbisPadData *, int32_t);
-
-int32_t scePadReadStateExt(int32_t, OrbisPadData *);
-
-int32_t sceUserServiceGetPsnPasswordForDebug(int32_t, char *, size_t);
 
 HOOK_DEFINE(scePadOpen, int32_t userId, int32_t type, int32_t index, void *param) {
     RemoteUser *user = remoteUserService->getUser(userId);

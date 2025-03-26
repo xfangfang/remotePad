@@ -662,13 +662,24 @@
     });
 
     for (let i = 0; i < btnMap.length; i++) {
+      const minHoldTime = 50;
       const keyDown = function(ev) {
+        btnMap[i].downStamp = ev.timeStamp;
         sendButtonDown(btnMap[i].value);
         ev.preventDefault();
       }
       const keyUp = function(ev) {
+        if (btnMap[i].downStamp && ev.timeStamp - btnMap[i].downStamp < minHoldTime) {
+          // Simulate the click effect of a controller.
+          // Ensuring a minimum click interval of 50ms can prevent some games
+          // that rely on the `scePadGetState` function from mistakenly ignoring rapid click inputs.
+          setTimeout(() => {
+            sendButtonUp(btnMap[i].value);
+          }, minHoldTime - (ev.timeStamp - btnMap[i].downStamp));
+        } else {
           sendButtonUp(btnMap[i].value);
-          ev.preventDefault();
+        }
+        ev.preventDefault();
       }
       btnMap[i].btn.addEventListener("touchstart", keyDown);
       btnMap[i].btn.addEventListener("mousedown", keyDown);

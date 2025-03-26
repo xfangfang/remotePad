@@ -260,6 +260,8 @@ static int32_t wsTerm(RemotePadDriverPtr driver) {
         termData(ctx->vibrationData[i]);
     }
 
+    scePthreadMutexDestroy(&ctx->dataMutex);
+
     return 0;
 }
 

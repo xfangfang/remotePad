@@ -21,6 +21,14 @@ static RemotePadService *remotePad;
 
 static bool prxLoaded = false;
 
+HOOK_DEFINE(scePadInit, void) {
+    if (remotePad->initDriver() != SCE_OK) {
+        final_printf("Failed to init remote pad driver\n");
+    }
+    final_printf("RemotePad driver loaded\n");
+    return HOOK_PASS(scePadInit);
+}
+
 HOOK_DEFINE(scePadOpen, int32_t userId, int32_t type, int32_t index, void *param) {
     RemoteUser *user = remoteUserService->getUser(userId);
     if (user != NULL)
@@ -240,6 +248,7 @@ int32_t attr_public plugin_load(int32_t argc, const char *argv[]) {
         return -1;
     }
 
+    HOOK32(scePadInit);
     HOOK32(scePadOpen);
     HOOK32(scePadGetHandle);
     HOOK32(scePadRead);
@@ -318,6 +327,7 @@ int32_t attr_public plugin_unload(int32_t argc, const char *argv[]) {
     termRemoteUserService(remoteUserService);
     termRemotePadService(remotePad);
 
+    UNHOOK(scePadInit);
     UNHOOK(scePadOpen);
     UNHOOK(scePadGetHandle);
     UNHOOK(scePadRead);

@@ -41,11 +41,6 @@ static const RemotePadDriver *const padDrivers[] = {&dummyDriver, &wsDriver};
 
 static int32_t init(void) {
     int ret;
-    for (size_t i = 0; i < ARRAY_SIZE(padDrivers); i++) {
-        if (padDrivers[i]->init(padDrivers[i]) != 0) {
-            return -1;
-        }
-    }
 
     ret = scePthreadMutexInit(&rps.padMutex, 0, "padMtx");
     if (ret < 0) {
@@ -78,8 +73,16 @@ static int32_t term(void) {
         }
     }
     scePthreadMutexUnlock(&rps.padMutex);
+    scePthreadMutexDestroy(&rps.padMutex);
+    scePthreadMutexDestroy(&rps.dataMutex);
+    return 0;
+}
+
+static int32_t initDriver() {
     for (size_t i = 0; i < ARRAY_SIZE(padDrivers); i++) {
-        padDrivers[i]->term(padDrivers[i]);
+        if (padDrivers[i]->init(padDrivers[i]) != 0) {
+            return -1;
+        }
     }
     return 0;
 }
@@ -204,6 +207,7 @@ static int32_t padClose(int32_t handle) {
 RemotePadService rps = {
         .init = init,
         .term = term,
+        .initDriver = initDriver,
         .getPad = getPad,
         .setLightBar = padSetLightBar,
         .resetLightBar = padResetLightBar,

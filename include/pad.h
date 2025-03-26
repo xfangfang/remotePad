@@ -90,6 +90,8 @@ typedef struct RemotePadService {
 
     int32_t (*term)(void);
 
+    int32_t (*initDriver)(void);
+
     int32_t (*getPad)(int32_t handle, RemotePad **padPtr);
 
     int32_t (*setLightBar)(int32_t handle, OrbisPadColor *inputColor);

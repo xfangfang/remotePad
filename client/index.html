@@ -173,28 +173,28 @@
 
     <div class="gamepad-top">
       <div>
-        <button class="btn" id="btnL1">L1<span>KeyQ</span></button>
-        <button class="btn" id="btnL2">L2<span>Digit1</span></button>
-        <button class="btn" id="btnShare">S<span>KeyU</span></button>
+        <button class="btn" id="btnL1">L1</button>
+        <button class="btn" id="btnL2">L2</button>
+        <button class="btn" id="btnShare">S</button>
       </div>
       <div>
-        <button class="btn" id="btnOptions">O<span>KeyO</span></button>
-        <button class="btn" id="btnR2">R2<span>Digit3</span></button>
-        <button class="btn" id="btnR1">R1<span>KeyE</span></button>
+        <button class="btn" id="btnOptions">O</button>
+        <button class="btn" id="btnR2">R2</button>
+        <button class="btn" id="btnR1">R1</button>
       </div>
     </div>
     <div class="gamepad-center">
       <div class="pad">
         <div class="pad-top">
-          <button class="btn" id="btnUp">↑<span>KeyI</span></button>
+          <button class="btn" id="btnUp">↑</button>
         </div>
         <div class="pad-center">
-          <button class="btn" id="btnLeft">←<span>KeyJ</span></button>
-          <button class="btn" id="btnL3">L3<span>KeyZ</span></button>
-          <button class="btn" id="btnRight">→<span>KeyL</span></button>
+          <button class="btn" id="btnLeft">←</button>
+          <button class="btn" id="btnL3">L3</button>
+          <button class="btn" id="btnRight">→</button>
         </div>
         <div class="pad-top">
-          <button class="btn" id="btnDown">↓<span>KeyK</span></button>
+          <button class="btn" id="btnDown">↓</button>
         </div>
       </div>
 
@@ -202,15 +202,15 @@
 
       <div class="pad">
         <div class="pad-top">
-          <button class="btn" id="btnTriangle">△<span>Enter</span></button>
+          <button class="btn" id="btnTriangle">△</button>
         </div>
         <div class="pad-center">
-          <button class="btn" id="btnSquare">□<span>Delete</span></button>
-          <button class="btn" id="btnR3">R3<span>KeyC</span></button>
-          <button class="btn" id="btnCircle">○<span>Escape</span></button>
+          <button class="btn" id="btnSquare">□</button>
+          <button class="btn" id="btnR3">R3</button>
+          <button class="btn" id="btnCircle">○</button>
         </div>
         <div class="pad-top">
-          <button class="btn" id="btnCross">X<span>Space</span></button>
+          <button class="btn" id="btnCross">X</button>
         </div>
       </div>
 
@@ -363,75 +363,93 @@
     const btnMap = [
       {
         btn: btn0,
+        text: 'X',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_CROSS
       },
       {
         btn: btn1,
+        text: '○',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE
       },
       {
         btn: btn2,
+        text: '□',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE
       },
       {
         btn: btn3,
+        text: '△',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE
       },
       {
         btn: btn4,
+        text: 'L1',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_L1
       },
       {
         btn: btn5,
+        text: 'R1',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_R1
       },
       {
         btn: btn6,
+        text: 'L2',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_L2
       },
       {
         btn: btn7,
+        text: 'R2',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_R2
       },
       {
         // share => touchpad
         btn: btn8,
+        text: 'S',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       },
       {
         btn: btn9,
+        text: 'O',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS
       },
       {
         btn: btn10,
+        text: 'L3',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_L3
       },
       {
         btn: btn11,
+        text: 'R3',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_R3
       },
       {
         btn: btn12,
+        text: '↑',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_UP
       },
       {
         btn: btn13,
+        text: '↓',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_DOWN
       },
       {
         btn: btn14,
+        text: '←',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_LEFT
       },
       {
         btn: btn15,
+        text: '→',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT
       },
       {
         btn: btn16,
+        text: 'TouchPad',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       },
       {
         btn: btn16,
+        text: 'TouchPad',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       }
     ]
@@ -851,6 +869,8 @@
      * Keyboard mapping
      */
 
+    // Keyboard mapping 1
+    // If you want to change the keyboard mapping, you can modify the following code
     const keyboardMap = {
       "KeyI": OrbisPadButton.ORBIS_PAD_BUTTON_UP,
       "KeyK": OrbisPadButton.ORBIS_PAD_BUTTON_DOWN,
@@ -874,6 +894,17 @@
       "Escape": OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE,
     };
 
+    // Update button text with keyboard key
+    for (let i of btnMap) {
+      for (let j in keyboardMap) {
+        if (keyboardMap[j] === i.value) {
+          i.btn.innerHTML = `${i.text}<span>${j}</span>`;
+        }
+      }
+    }
+
+    // Keyboard mapping 2
+    // If you want to change the keyboard mapping, you can modify the following code
     const stickMap = {
         "KeyW": {
           down: () => leftStickY = 0,

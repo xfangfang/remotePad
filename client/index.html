@@ -133,6 +133,7 @@
         height: 20vw;
         position: relative;
         top: -9vw;
+        border-width: 0.2vw;
       }
 
       #pad {
@@ -361,79 +362,90 @@
 
     const btnMap = [
       {
-          btn: btn0,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_CROSS
+        btn: btn0,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_CROSS
       },
       {
-          btn: btn1,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE
+        btn: btn1,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_CIRCLE
       },
       {
-          btn: btn2,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE
+        btn: btn2,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE
       },
       {
-          btn: btn3,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE
+        btn: btn3,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE
       },
       {
-          btn: btn4,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_L1
+        btn: btn4,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_L1
       },
       {
-          btn: btn5,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_R1
+        btn: btn5,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_R1
       },
       {
-          btn: btn6,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_L2
+        btn: btn6,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_L2
       },
       {
-          btn: btn7,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_R2
+        btn: btn7,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_R2
       },
       {
-          // share => touchpad
-          btn: btn8,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+        // share => touchpad
+        btn: btn8,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       },
       {
-          btn: btn9,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS
+        btn: btn9,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS
       },
       {
-          btn: btn10,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_L3
+        btn: btn10,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_L3
       },
       {
-          btn: btn11,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_R3
+        btn: btn11,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_R3
       },
       {
-          btn: btn12,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_UP
+        btn: btn12,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_UP
       },
       {
-          btn: btn13,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_DOWN
+        btn: btn13,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_DOWN
       },
       {
-          btn: btn14,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_LEFT
+        btn: btn14,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_LEFT
       },
       {
-          btn: btn15,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT
+        btn: btn15,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_RIGHT
       },
       {
-          btn: btn16,
-          value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+        btn: btn16,
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       },
       {
         btn: btn16,
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       }
     ]
+
+    // Blue, Red, Green, Pink
+    const lightbarMap = [
+            [135, 206, 235],
+            [255, 182, 193],
+            [198, 244, 214],
+            [255, 215, 190]
+    ]
+    pad.addEventListener('change', () => {
+      resetLightbar();
+    });
 
     let GamepadButton = 0;
     let leftStickX = 128, leftStickY = 128, rightStickX = 128, rightStickY = 128;
@@ -479,8 +491,12 @@
             },
             () => setGamePadStatus(false),
             msg => {
-              if (msg.method === 'vibration') {
+              if (msg.method === 'v') {
                 processVibration(msg.params);
+              } else if (msg.method === 'l') {
+                processLightbar(msg.params);
+              } else if (msg.method === 'rl') {
+                resetLightbar(msg.params);
               }
             });
     }
@@ -759,6 +775,25 @@
         break;
       }
     }
+
+    function processLightbar(params) {
+      let pad_index = params[0];
+      let r = params[1];
+      let g = params[2];
+      let b = params[3];
+
+      if (pad_index !== Number(pad.value)) {
+        return;
+      }
+
+      btn16.style.borderColor = `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function resetLightbar() {
+      let index = Number(pad.value);
+      processLightbar([index].concat(lightbarMap[index]));
+    }
+    resetLightbar();
 
     function updateStatus() {
       scanGamepads();

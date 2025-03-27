@@ -98,7 +98,7 @@ static int32_t getUserColor(int32_t userId, OrbisUserServiceUserColor *color) {
     if (user == NULL)
         return ORBIS_USER_SERVICE_ERROR_NOT_LOGGED_IN;
 
-    *color = (OrbisUserServiceUserColor) (userId % 4);
+    *color = (OrbisUserServiceUserColor) (user->index % 4);
 
     return 0;
 }

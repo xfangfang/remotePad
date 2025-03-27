@@ -9,11 +9,120 @@
 typedef struct wsDriverData {
     struct mg_mgr mgr;
     struct mg_rpc *rpc_head;
-    OrbisPthreadMutex dataMutex;
-    circularBuf *vibrationData[REMOTE_PAD_MAX_PADS];
     OrbisPadVibeParam lastVibration[REMOTE_PAD_MAX_PADS];
+    OrbisPadColor lastColor[REMOTE_PAD_MAX_PADS];
+    bool lightBarReset[REMOTE_PAD_MAX_PADS];
     bool running;
 } wsDriverData;
+
+enum wsWakeupEvent {
+    WS_WAKEUP_VIBRATION = 0,
+    WS_WAKEUP_LIGHTBAR,
+    WS_WAKEUP_RESET_LIGHTBAR,
+};
+
+union usa {
+    struct sockaddr sa;
+    struct sockaddr_in sin;
+#if MG_ENABLE_IPV6
+    struct sockaddr_in6 sin6;
+#endif
+};
+
+static bool mg_socketpair(MG_SOCKET_TYPE sp[2], union usa usa[2]) {
+    socklen_t n = sizeof(usa[0].sin);
+    bool success = false;
+
+    sp[0] = sp[1] = MG_INVALID_SOCKET;
+    (void) memset(&usa[0], 0, sizeof(usa[0]));
+    usa[0].sin.sin_family = AF_INET;
+    *(uint32_t *) &usa->sin.sin_addr = mg_htonl(0x7f000001U);  // 127.0.0.1
+    usa[1] = usa[0];
+
+    if ((sp[0] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) != MG_INVALID_SOCKET &&
+        (sp[1] = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) != MG_INVALID_SOCKET &&
+        bind(sp[0], &usa[0].sa, n) == 0 &&          //
+        bind(sp[1], &usa[1].sa, n) == 0 &&          //
+        getsockname(sp[0], &usa[0].sa, &n) == 0 &&  //
+        getsockname(sp[1], &usa[1].sa, &n) == 0 &&  //
+        connect(sp[0], &usa[1].sa, n) == 0 &&       //
+        connect(sp[1], &usa[0].sa, n) == 0) {       //
+        success = true;
+    }
+    if (!success) {
+        if (sp[0] != MG_INVALID_SOCKET) close(sp[0]);
+        if (sp[1] != MG_INVALID_SOCKET) close(sp[1]);
+        sp[0] = sp[1] = MG_INVALID_SOCKET;
+    }
+    return success;
+}
+
+static void tomgaddr(union usa *usa, struct mg_addr *a, bool is_ip6) {
+    a->is_ip6 = is_ip6;
+    a->port = usa->sin.sin_port;
+    memcpy(&a->ip, &usa->sin.sin_addr, sizeof(uint32_t));
+#if MG_ENABLE_IPV6
+    if (is_ip6) {
+    memcpy(a->ip, &usa->sin6.sin6_addr, sizeof(a->ip));
+    a->port = usa->sin6.sin6_port;
+    a->scope_id = (uint8_t) usa->sin6.sin6_scope_id;
+  }
+#endif
+}
+
+static void ws_wakeup_fn(struct mg_connection *c, int ev, void *ev_data) {
+    if (ev == MG_EV_READ) {
+        // MG_INFO(("Got data"));
+        // mg_hexdump(c->recv.buf, c->recv.len);
+        struct mg_connection *t;
+        for (t = c->mgr->conns; t != NULL; t = t->next) {
+            if (t->is_websocket) {
+                struct mg_str data = mg_str_n((char *) c->recv.buf, c->recv.len);
+                mg_call(t, MG_EV_WAKEUP, &data);
+            }
+        }
+        c->recv.len = 0;  // Consume received data
+    } else if (ev == MG_EV_CLOSE) {
+        close(c->mgr->pipe);         // When we're closing, close the other
+        c->mgr->pipe = MG_INVALID_SOCKET;  // side of the socketpair, too
+    }
+    (void) ev_data;
+}
+
+static bool ws_wakeup_init(struct mg_mgr *mgr) {
+    bool ok = false;
+    if (mgr->pipe == MG_INVALID_SOCKET) {
+        union usa usa[2];
+        MG_SOCKET_TYPE sp[2] = {MG_INVALID_SOCKET, MG_INVALID_SOCKET};
+        struct mg_connection *c = NULL;
+        if (!mg_socketpair(sp, usa)) {
+            MG_ERROR(("Cannot create socket pair"));
+        } else if ((c = mg_wrapfd(mgr, (int) sp[1], ws_wakeup_fn, NULL)) == NULL) {
+            close(sp[0]);
+            close(sp[1]);
+            sp[0] = sp[1] = MG_INVALID_SOCKET;
+        } else {
+            tomgaddr(&usa[0], &c->rem, false);
+            MG_DEBUG(("%lu %p pipe %lu", c->id, c->fd, (unsigned long) sp[0]));
+            mgr->pipe = sp[0];
+            ok = true;
+        }
+    }
+    return ok;
+}
+
+static bool ws_wakeup(struct mg_mgr *mgr, uint8_t type, uint8_t index, const void *buf, size_t len) {
+    if (mgr->pipe != MG_INVALID_SOCKET) {
+        size_t msg_len = len + sizeof(type) + sizeof(index);
+        char *extended_buf = (char *) alloca(msg_len);
+        memcpy(extended_buf, &type, sizeof(type));
+        memcpy(extended_buf + sizeof(type), &index, sizeof(index));
+        memcpy(extended_buf + sizeof(type) + sizeof(index), buf, len);
+        send(mgr->pipe, extended_buf, msg_len, 0);
+        return true;
+    }
+    return false;
+}
 
 // Needed by mongoose errno() function
 int *attr_public __errno_location(void) {
@@ -115,8 +224,6 @@ static void rpc_info(struct mg_rpc_req *r) {
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
     if (ev == MG_EV_OPEN) {
         // c->is_hexdumping = 1;
-    } else if (ev == MG_EV_WS_OPEN) {
-        c->data[0] = 'W';  // Mark this connection as an established WS client
     } else if (ev == MG_EV_HTTP_MSG) {
         struct mg_http_message *hm = (struct mg_http_message *) ev_data;
         struct mg_str *connection = mg_http_get_header(hm, "Connection");
@@ -136,22 +243,41 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
         mg_rpc_process(&r);
         if (io.buf) mg_ws_send(c, (char *) io.buf, io.len, WEBSOCKET_OP_TEXT);
         mg_iobuf_free(&io);
+    } else if (ev == MG_EV_WAKEUP) {
+        struct mg_str *data = (struct mg_str *) ev_data;
+        uint8_t type = *((uint8_t *) data->buf);
+        uint8_t index = *((uint8_t *) (data->buf + 1));
+        void *buf = data->buf + 2;
+        switch (type) {
+            case WS_WAKEUP_VIBRATION: {
+                OrbisPadVibeParam *param = (OrbisPadVibeParam *) buf;
+                mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m:%m,%m:[%d,%d,%d]}",
+                             MG_ESC("method"), MG_ESC("v"), MG_ESC("params"),
+                             index, param->lgMotor, param->smMotor);
+                break;
+            }
+            case WS_WAKEUP_LIGHTBAR: {
+                OrbisPadColor *color = (OrbisPadColor *) buf;
+                mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m:%m,%m:[%d,%d,%d,%d]}",
+                             MG_ESC("method"), MG_ESC("l"), MG_ESC("params"),
+                             index, color->r, color->g, color->b);
+                break;
+            }
+            case WS_WAKEUP_RESET_LIGHTBAR:
+                mg_ws_printf(c, WEBSOCKET_OP_TEXT, "{%m:%m,%m:[%d]}",
+                             MG_ESC("method"), MG_ESC("rl"), MG_ESC("params"),
+                             index);
+                break;
+            default:
+                break;
+        }
     }
-}
-
-static void wsBroadcast(struct mg_mgr *mgr, const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    for (struct mg_connection *c = mgr->conns; c != NULL; c = c->next) {
-        if (c->data[0] != 'W') continue;
-        mg_ws_vprintf(c, WEBSOCKET_OP_TEXT, fmt, &ap);
-    }
-    va_end(ap);
 }
 
 void *websocketThread(void *thread_arg) {
     wsDriverData *ctx = (wsDriverData *) thread_arg;
     mg_mgr_init(&ctx->mgr);
+    ws_wakeup_init(&ctx->mgr);
     mg_log_set(MG_LL_NONE);
 
     mg_rpc_add(&ctx->rpc_head, mg_str("u"), rpc_update, ctx);
@@ -162,32 +288,8 @@ void *websocketThread(void *thread_arg) {
     final_printf("Starting WS listener on %s\n", s_listen_on);
     mg_http_listen(&ctx->mgr, s_listen_on, fn, ctx);
     notifyServerAddress();
-    OrbisPadVibeParam vibeParam[REMOTE_PAD_MAX_HISTORY];
     while (ctx->running) {
         mg_mgr_poll(&ctx->mgr, 4);
-
-        scePthreadMutexLock(&ctx->dataMutex);
-        for (int i = 0; i < REMOTE_PAD_MAX_PADS; ++i) {
-            // Pull the vibration data from the circular buffer
-            int count = getData(ctx->vibrationData[i], vibeParam, REMOTE_PAD_MAX_HISTORY);
-            if (count > 0) {
-                // Send the latest vibration data to the connected clients
-                uint8_t lgMotor = vibeParam[count - 1].lgMotor;
-                uint8_t smMotor = vibeParam[count - 1].smMotor;
-                if (lgMotor == ctx->lastVibration[i].lgMotor &&
-                    smMotor == ctx->lastVibration[i].smMotor &&
-                    lgMotor == 0 && smMotor == 0) {
-                    // Some games keep sending empty vibration data. Ignore it to reduce traffic.
-                    continue;
-                }
-                ctx->lastVibration[i].lgMotor = lgMotor;
-                ctx->lastVibration[i].smMotor = smMotor;
-                wsBroadcast(&ctx->mgr, "{%m:%m,%m:[%d,%d,%d]}",
-                            MG_ESC("method"), MG_ESC("vibration"), MG_ESC("params"),
-                            i, lgMotor, smMotor);
-            }
-        }
-        scePthreadMutexUnlock(&ctx->dataMutex);
     }
     mg_mgr_free(&ctx->mgr);
     mg_rpc_del(&ctx->rpc_head, NULL);
@@ -196,19 +298,36 @@ void *websocketThread(void *thread_arg) {
 }
 
 static int32_t wsSetLightBar(RemotePad *pad, OrbisPadColor *inputColor) {
+    wsDriverData *ctx = pad->driver->data;
+    if (!ctx->lightBarReset[pad->index] &&
+        memcmp(inputColor, &ctx->lastColor[pad->index], sizeof(OrbisPadColor)) == 0) {
+        return 0;
+    }
+    memcpy(&ctx->lastColor[pad->index], inputColor, sizeof(OrbisPadColor));
+    ctx->lightBarReset[pad->index] = false;
+    ws_wakeup(&ctx->mgr, WS_WAKEUP_LIGHTBAR, pad->index, inputColor, sizeof(OrbisPadColor));
     return 0;
 }
 
 static int32_t wsResetLightBar(RemotePad *pad) {
+    wsDriverData *ctx = pad->driver->data;
+    if (ctx->lightBarReset[pad->index]) {
+        return 0;
+    }
+    ctx->lightBarReset[pad->index] = true;
+    ws_wakeup(&ctx->mgr, WS_WAKEUP_RESET_LIGHTBAR, pad->index, NULL, 0);
     return 0;
 }
 
 static int32_t wsSetVibration(RemotePad *pad, const OrbisPadVibeParam *param) {
     wsDriverData *ctx = pad->driver->data;
-    // Push the vibration data to the circular buffer
-    scePthreadMutexLock(&ctx->dataMutex);
-    pushData(ctx->vibrationData[pad->index], param);
-    scePthreadMutexUnlock(&ctx->dataMutex);
+    if (memcmp(param, &ctx->lastVibration[pad->index], sizeof(OrbisPadVibeParam)) == 0 &&
+        param->lgMotor == 0 && param->smMotor == 0) {
+        // Some games keep sending empty vibration data. Ignore it to reduce traffic.
+        return 0;
+    }
+    memcpy(&ctx->lastVibration[pad->index], param, sizeof(OrbisPadVibeParam));
+    ws_wakeup(&ctx->mgr, WS_WAKEUP_VIBRATION, pad->index, param, sizeof(OrbisPadVibeParam));
     return 0;
 }
 
@@ -218,21 +337,6 @@ static int32_t wsInit(RemotePadDriverPtr driver) {
     if (ctx->running) {
         final_printf("[RemotePad]: ws driver is already initialized\n");
         return 0;
-    }
-
-    ret = scePthreadMutexInit(&ctx->dataMutex, 0, "wsSrvMtx");
-    if (ret < 0) {
-        final_printf("[RemotePad]: failed to init the server mutex, 0x%X\n", ret);
-        return -1;
-    }
-
-    for (int i = 0; i < REMOTE_PAD_MAX_PADS; ++i) {
-        if (ctx->vibrationData[i] != NULL)
-            continue;
-        initData(&ctx->vibrationData[i],
-                 sizeof(OrbisPadVibeParam),
-                 REMOTE_PAD_MAX_HISTORY,
-                 NULL);
     }
 
     ctx->running = true;
@@ -253,14 +357,6 @@ static int32_t wsTerm(RemotePadDriverPtr driver) {
         ctx->running = false;
         scePthreadJoin(serverThread, 0);
     }
-
-    for (int i = 0; i < REMOTE_PAD_MAX_PADS; ++i) {
-        if (ctx->vibrationData[i] == NULL)
-            continue;
-        termData(ctx->vibrationData[i]);
-    }
-
-    scePthreadMutexDestroy(&ctx->dataMutex);
 
     return 0;
 }

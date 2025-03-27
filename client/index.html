@@ -719,10 +719,6 @@
       btn16.innerHTML = "GamePad\nConnected";
       controllers[gamepad.index] = gamepad;
 
-      if (gamepad.vibrationActuator && gamepad.vibrationActuator.type === "dual-rumble") {
-        controllers[gamepad.index].canVibrate = true;
-      }
-
       rAF(updateStatus);
     }
 
@@ -760,8 +756,9 @@
 
       for (let j in controllers) {
         let controller = controllers[j];
-        if (!controller.canVibrate)
-          break;
+        if (!controller.vibrationActuator || controller.vibrationActuator.type !== "dual-rumble") {
+          continue;
+        }
         if (small_motor === 0 && large_motor === 0) {
           controller.vibrationActuator.reset();
           break;

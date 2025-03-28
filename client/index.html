@@ -520,7 +520,11 @@
     }
 
     connect.onclick = toggleConnection;
-    toggleConnection();
+    try {
+      toggleConnection();
+    } catch (e) {
+      console.error(e);
+    }
 
     function sendData() {
       if (!rpc)

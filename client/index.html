@@ -56,6 +56,7 @@
         border-radius: 2vw;
         text-align: center;
         color: black;
+        padding: 0;
       }
       .btn span{
         color: #888;
@@ -74,7 +75,15 @@
         justify-content: space-between;
         position: relative;
       }
-
+      #msg{
+        width: 50vw;
+        height: 20vw;
+        position: absolute;
+        left: 25vw;
+        bottom: -2vw;
+        text-align: center;
+        color: #888;
+      }
       .stick-area {
         width: 50vw;
         height: 20vw;
@@ -130,10 +139,40 @@
 
       .touch {
         width: 30vw;
-        height: 20vw;
+        height: 15vw;
         position: relative;
         top: -9vw;
         border-width: 0.2vw;
+        background-image: radial-gradient(#bbb8 0.15vw, transparent 0.15vw);
+        background-size: 0.8vw 0.8vw;
+      }
+      .touch span {
+        position: absolute;
+      }
+      .touch .top-left {
+        top: 1vw;
+        left: 1vw;
+      }
+      .touch .top-right {
+        top: 1vw;
+        right: 1vw;
+      }
+      .touch .bottom-left {
+        bottom: 1vw;
+        left: 1vw;
+      }
+      .touch .bottom-right {
+        bottom: 1vw;
+        right: 1vw;
+      }
+      .touch-point {
+        width: 2vw;
+        height: 2vw;
+        border-radius: 2vw;
+        display: none;
+        background-color: gray;
+        position: absolute;
+        cursor: none;
       }
 
       #pad {
@@ -198,7 +237,14 @@
         </div>
       </div>
 
-      <button class="btn touch" id="btnTouch">TouchPad</button>
+      <div class="btn touch" id="btnTouch">
+        <span class="top-left">KeyT</span>
+        <span class="top-right">KeyY</span>
+        <span class="bottom-left">KeyG</span>
+        <span class="bottom-right">KeyH</span>
+        <div id="touch-point1" class="touch-point"></div>
+        <div id="touch-point2" class="touch-point"></div>
+      </div>
 
       <div class="pad">
         <div class="pad-top">
@@ -213,6 +259,8 @@
           <button class="btn" id="btnCross">X</button>
         </div>
       </div>
+
+      <span id="msg"></span>
 
       <div class="stick-area">
         <div class="stick" id="cl">
@@ -236,6 +284,7 @@
   <script>
     const OrbisPadButton =
     {
+      ORBIS_PAD_BUTTON_SHARE: 0x0001, // Share button, not used, defined by me
       ORBIS_PAD_BUTTON_L3: 0x0002,
       ORBIS_PAD_BUTTON_R3: 0x0004,
       ORBIS_PAD_BUTTON_OPTIONS: 0x0008,
@@ -256,6 +305,9 @@
 
       ORBIS_PAD_BUTTON_TOUCH_PAD: 0x100000
     };
+    const MAX_TOUCH_PAD_WIDTH = 1919;
+    const MAX_TOUCH_PAD_HEIGHT = 941;
+    const MAX_TOUCH_ID = 127;
 
     let rpc;
     let rpc_running = false;
@@ -308,6 +360,7 @@
     const url = E('url');
     const connect = E('connect');
     const fs = E('fs');
+    const msg = E('msg');
     const cl = E('cl');
     const cr = E('cr');
     const cl_pad = E('cl-pad');
@@ -330,6 +383,9 @@
     const btn14 = E('btnLeft');
     const btn15 = E('btnRight');
     const btn16 = E('btnTouch');
+
+    const touch1 = E('touch-point1');
+    const touch2 = E('touch-point2');
 
     let lastUrl = localStorage.getItem('url');
     if (lastUrl) {
@@ -402,10 +458,10 @@
         value: OrbisPadButton.ORBIS_PAD_BUTTON_R2
       },
       {
-        // share => touchpad
+        // ignore share button now
         btn: btn8,
         text: 'S',
-        value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_SHARE
       },
       {
         btn: btn9,
@@ -451,6 +507,11 @@
         btn: btn16,
         text: 'TouchPad',
         value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
+      },
+      {
+        btn: btn16,
+        text: 'TouchPad',
+        value: OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD
       }
     ]
 
@@ -466,6 +527,12 @@
     });
 
     let GamepadButton = 0;
+    let touchPoint1X = 0, touchPoint1Y = 0, touchPoint2X = 0, touchPoint2Y = 0;
+    let touchPoint1MoveEnabled = false, touchPoint2MoveEnabled = false;
+    let touchPoint1MoveFinger = -1, touchPoint2MoveFinger = -1;
+    let touchPoint1Id = -1, touchPoint2Id = -1;
+    let touchPoint1Pressed = false, touchPoint2Pressed = false;
+    let touchPoint1PressedTime = 0, touchPoint2PressedTime = 0;
     let leftStickX = 128, leftStickY = 128, rightStickX = 128, rightStickY = 128;
     let left2 = 0, right2 = 0;
     let lastSentData = [];
@@ -473,6 +540,9 @@
     // Touch/mouse click generated button value, combined with GamepadButton and sent to the server
     let MouseButton = 0;
     let MouseLeftStickX = 128, MouseLeftStickY = 128, MouseRightStickX = 128, MouseRightStickY = 128;
+
+    // The minimum click interval is set to 50ms to prevent some games that rely on the scePadGetState function from mistakenly ignoring rapid click inputs.
+    const minHoldTime = 50;
 
     function notify(msg) {
       if (!rpc)
@@ -561,6 +631,8 @@
 
       // Update button background color
       for (let i = 0; i < btnMap.length; i++) {
+        if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD)
+          continue;
         if (button_send & btnMap[i].value) {
           btnMap[i].btn.style.backgroundColor = '#555';
         } else {
@@ -580,8 +652,24 @@
       cr_pad.style.top = `${(rsy / 255 * 10)}vw`;
       cr_pad.style.left = `${(rsx / 255 * 10)}vw`;
 
+      // ignore self defined share button
+      button_send &= ~OrbisPadButton.ORBIS_PAD_BUTTON_SHARE;
+
+      // Update touch point position
+      let touch_num = 0;
+      if (touchPoint1MoveEnabled)
+        touch_num++;
+      if (touchPoint2MoveEnabled)
+        touch_num++;
+
       // Check if last sent data is the same as the current data, if so, don't send it again
-      let data = [Number(pad.value), button_send, lsx, lsy, rsx, rsy, left2_send, right2_send];
+      let data = [Number(pad.value), button_send, lsx, lsy, rsx, rsy, left2_send, right2_send, touch_num];
+      if (touchPoint1MoveEnabled) {
+        data.push(touchPoint1Id, touchPoint1X, touchPoint1Y);
+      }
+      if (touchPoint2MoveEnabled) {
+        data.push(touchPoint2Id, touchPoint2X, touchPoint2Y);
+      }
       if (JSON.stringify(lastSentData) === JSON.stringify(data))
         return;
       lastSentData = data.slice();
@@ -617,26 +705,139 @@
     let rightStickStartY = 0;
     let leftStickMoveFinger = -1;
     let rightStickMoveFinger = -1;
+    let touchPointMoveFinger = -1;
     cl_pad.addEventListener("mousedown", function (ev) {
-      leftStickStartX = ev.screenX;
-      leftStickStartY = ev.screenY;
+      leftStickStartX = ev.pageX;
+      leftStickStartY = ev.pageY;
       leftStickMoveFinger = 1;
     });
     cl_pad.addEventListener("touchstart", function (ev) {
-      leftStickStartX = ev.changedTouches[0].screenX;
-      leftStickStartY = ev.changedTouches[0].screenY;
+      leftStickStartX = ev.changedTouches[0].pageX;
+      leftStickStartY = ev.changedTouches[0].pageY;
       leftStickMoveFinger = ev.changedTouches[0].identifier;
     });
     cr_pad.addEventListener("mousedown", function (ev) {
-      rightStickStartX = ev.screenX;
-      rightStickStartY = ev.screenY;
+      rightStickStartX = ev.pageX;
+      rightStickStartY = ev.pageY;
       rightStickMoveFinger = 1;
     });
     cr_pad.addEventListener("touchstart",function (ev) {
-      rightStickStartX = ev.changedTouches[0].screenX;
-      rightStickStartY = ev.changedTouches[0].screenY;
+      rightStickStartX = ev.changedTouches[0].pageX;
+      rightStickStartY = ev.changedTouches[0].pageY;
       rightStickMoveFinger = ev.changedTouches[0].identifier;
     });
+    function enableTouchPoint1() {
+      touchPoint1MoveEnabled = true;
+      touchPoint1Id = genNewTouchId();
+      touch1.style.display = 'inline-block';
+    }
+    function disableTouchPoint1() {
+      touchPoint1X = 0;
+      touchPoint1Y = 0;
+      touchPoint1MoveEnabled = false;
+      touch1.style.display = 'none';
+    }
+    function touchPoint1Down(ev) {
+      touchPoint1Pressed = true;
+      touchPoint1PressedTime = ev.timeStamp;
+      console.log("touchPoint1PressedTime", touchPoint1PressedTime);
+      touch1.style.backgroundColor = "#555";
+      sendButtonDown(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+    }
+    function touchPoint1Up(ev) {
+      touchPoint1Pressed = false;
+      touch1.style.backgroundColor = "gray";
+      if (touchPoint2MoveEnabled && touchPoint2Pressed)
+        return;
+      if (ev.timeStamp - touchPoint1PressedTime < minHoldTime) {
+        setTimeout(() => {
+          sendButtonUp(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+        }, minHoldTime - (ev.timeStamp - touchPoint1PressedTime));
+      } else {
+        sendButtonUp(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+      }
+    }
+    function enableTouchPoint2() {
+      touchPoint2MoveEnabled = true;
+      touchPoint2Id = genNewTouchId();
+      touch2.style.display = 'inline-block';
+    }
+    function disableTouchPoint2() {
+      touchPoint2X = 0;
+      touchPoint2Y = 0;
+      touchPoint2MoveEnabled = false;
+      touch2.style.display = 'none';
+    }
+    function touchPoint2Down(ev) {
+      touchPoint2Pressed = true;
+      touchPoint2PressedTime = ev.timeStamp;
+      touch2.style.backgroundColor = "#555";
+      sendButtonDown(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+    }
+    function touchPoint2Up(ev) {
+      touchPoint2Pressed = false;
+      touch2.style.backgroundColor = "gray";
+      if (touchPoint1MoveEnabled && touchPoint1Pressed)
+        return;
+      if (ev.timeStamp - touchPoint2PressedTime < minHoldTime) {
+        setTimeout(() => {
+          sendButtonUp(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+        }, minHoldTime - (ev.timeStamp - touchPoint2PressedTime));
+      } else {
+        sendButtonUp(OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD);
+      }
+    }
+    btn16.addEventListener("mouseleave", function (ev) {
+      disableTouchPoint1();
+      touchPoint1Up(ev);
+    });
+    btn16.addEventListener("mouseenter", function (ev) {
+      if (leftStickMoveFinger >= 0 || rightStickMoveFinger >= 0)
+        return;
+      if(ev.buttons > 0)
+        touchPoint1Down(ev);
+      enableTouchPoint1();
+    });
+    btn16.addEventListener("mousedown", function (ev) {
+      touchPoint1Down(ev);
+      ev.preventDefault();
+    });
+    btn16.addEventListener("mouseup", function (ev) {
+      touchPoint1Up(ev);
+      ev.preventDefault();
+    });
+    btn16.addEventListener("touchstart", function (ev) {
+      let touch = ev.changedTouches[0];
+      if (!touchPoint1MoveEnabled) {
+        touchPoint1MoveFinger = touch.identifier;
+        updateTouch1Position(touch.pageX, touch.pageY);
+        enableTouchPoint1();
+        touchPoint1Down(ev);
+      } else if (!touchPoint2MoveEnabled) {
+        touchPoint2MoveFinger = touch.identifier;
+        updateTouch2Position(touch.pageX, touch.pageY);
+        enableTouchPoint2();
+        touchPoint2Down(ev);
+      }
+      ev.preventDefault();
+    });
+    btn16.addEventListener("touchend", function (ev) {
+      let touch = ev.changedTouches[0];
+      if (touchPoint1MoveEnabled && touchPoint1MoveFinger === touch.identifier) {
+        disableTouchPoint1();
+        touchPoint1Up(ev);
+      }
+      if (touchPoint2MoveEnabled && touchPoint2MoveFinger === touch.identifier) {
+        disableTouchPoint2();
+        touchPoint2Up(ev);
+      }
+      ev.preventDefault();
+    });
+    function genNewTouchId() {
+      touchPointMoveFinger++;
+      touchPointMoveFinger %= MAX_TOUCH_ID + 1;
+      return touchPointMoveFinger;
+    }
     function updateLeftStickPosition(event_x, event_y) {
       MouseLeftStickX = ((event_x - leftStickStartX) / cl_pad.offsetWidth + 1) / 2 * 255;
       MouseLeftStickX = clamp(MouseLeftStickX, 0, 255);
@@ -653,20 +854,56 @@
       MouseRightStickY = clamp(MouseRightStickY, 0, 255);
       sendData();
     }
+    function updateTouch1PositionExt(x, y) {
+      x = clamp(x, 0, 1);
+      y = clamp(y, 0, 1);
+      touchPoint1X = Math.floor(x * MAX_TOUCH_PAD_WIDTH);
+      touchPoint1Y = Math.floor(y * MAX_TOUCH_PAD_HEIGHT);
+      touch1.style.left = `${btn16.offsetWidth * x - touch1.offsetWidth / 2}px`;
+      touch1.style.top = `${btn16.offsetHeight * y - touch1.offsetHeight / 2}px`;
+      sendData();
+    }
+    function updateTouch1Position(event_x, event_y) {
+      let x = (event_x - btn16.offsetLeft) / btn16.offsetWidth;
+      let y = (event_y - btn16.offsetTop - btn16.offsetParent.offsetTop) / btn16.offsetHeight;
+      updateTouch1PositionExt(x, y);
+    }
+    function updateTouch2PositionExt(x, y) {
+      x = clamp(x, 0, 1);
+      y = clamp(y, 0, 1);
+      touchPoint2X = Math.floor(x * MAX_TOUCH_PAD_WIDTH);
+      touchPoint2Y = Math.floor(y * MAX_TOUCH_PAD_HEIGHT);
+      touch2.style.left = `${btn16.offsetWidth * x - touch2.offsetWidth / 2}px`;
+      touch2.style.top = `${btn16.offsetHeight * y - touch2.offsetHeight / 2}px`;
+      sendData();
+    }
+    function updateTouch2Position(event_x, event_y) {
+      let x = (event_x - btn16.offsetLeft) / btn16.offsetWidth;
+      let y = (event_y - btn16.offsetTop - btn16.offsetParent.offsetTop) / btn16.offsetHeight;
+      updateTouch2PositionExt(x, y);
+    }
     document.addEventListener("mousemove", function (ev) {
-      let event_x = ev.screenX;
-      let event_y = ev.screenY;
+      let event_x = ev.pageX;
+      let event_y = ev.pageY;
       if (leftStickMoveFinger >= 0)
         updateLeftStickPosition(event_x, event_y);
       if (rightStickMoveFinger >= 0)
         updateRightStickPosition(event_x, event_y);
+      if (touchPoint1MoveEnabled)
+        updateTouch1Position(event_x, event_y);
     });
     document.addEventListener("touchmove", function (ev) {
       for (let i of ev.touches) {
         if (leftStickMoveFinger === i.identifier) {
-          updateLeftStickPosition(i.screenX, i.screenY);
+          updateLeftStickPosition(i.pageX, i.pageY);
         } else if (rightStickMoveFinger === i.identifier) {
-          updateRightStickPosition(i.screenX, i.screenY);
+          updateRightStickPosition(i.pageX, i.pageY);
+        } else {
+          if (touchPoint1MoveEnabled && touchPoint1MoveFinger === i.identifier) {
+            updateTouch1Position(i.pageX, i.pageY);
+          } else if (touchPoint2MoveEnabled && touchPoint2MoveFinger === i.identifier) {
+            updateTouch2Position(i.pageX, i.pageY);
+          }
         }
       }
     });
@@ -700,7 +937,9 @@
     });
 
     for (let i = 0; i < btnMap.length; i++) {
-      const minHoldTime = 50;
+      // Ignore touchpad button, as it is handled separately
+      if (btnMap[i].value === OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD)
+        continue;
       const keyDown = function(ev) {
         btnMap[i].downStamp = ev.timeStamp;
         sendButtonDown(btnMap[i].value);
@@ -738,14 +977,14 @@
 
     function addGamepad(gamepad) {
       console.log("gamepad connected", gamepad);
-      btn16.innerHTML = "GamePad\nConnected";
+      msg.innerHTML = "GamePad Connected";
       controllers[gamepad.index] = gamepad;
 
       rAF(updateStatus);
     }
 
     function removeGamepad(gamepad) {
-      btn16.innerHTML = "TouchPad";
+      msg.innerHTML = "";
       delete controllers[gamepad.index];
     }
 
@@ -889,7 +1128,7 @@
       "KeyC": OrbisPadButton.ORBIS_PAD_BUTTON_R3,
 
       "KeyO": OrbisPadButton.ORBIS_PAD_BUTTON_OPTIONS,
-      "KeyU": OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD,
+      "KeyU": OrbisPadButton.ORBIS_PAD_BUTTON_SHARE,
 
       "Enter": OrbisPadButton.ORBIS_PAD_BUTTON_TRIANGLE,
       "Backspace": OrbisPadButton.ORBIS_PAD_BUTTON_SQUARE,
@@ -905,6 +1144,25 @@
           i.btn.innerHTML = `${i.text}<span>${j}</span>`;
         }
       }
+    }
+
+    const touchMap = {
+      "KeyT": {
+        y: 0.25,
+        x: 0.25
+      },
+      "KeyY": {
+        y: 0.25,
+        x: 0.75
+      },
+      "KeyG": {
+        y: 0.75,
+        x: 0.25
+      },
+      "KeyH": {
+        y: 0.75,
+        x: 0.75
+      },
     }
 
     // Keyboard mapping 2
@@ -945,7 +1203,8 @@
     }
 
     window.addEventListener("keydown", (ev) => {
-      if (document.activeElement.tagName === "INPUT" ||
+      if (ev.repeat ||
+              document.activeElement.tagName === "INPUT" ||
               document.activeElement.tagName === "TEXTAREA") {
         return;
       }
@@ -962,6 +1221,12 @@
         }
         GamepadButton |= b;
         sendData();
+      } else if (ev.code in touchMap) {
+        let b = touchMap[ev.code];
+        GamepadButton |= OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD;
+        enableTouchPoint1();
+        updateTouch1PositionExt(b.x, b.y);
+        touchPoint1Down(ev);
       }
 
       ev.preventDefault();
@@ -985,6 +1250,10 @@
         }
         GamepadButton &= ~b;
         sendData();
+      } else if (ev.code in touchMap) {
+        GamepadButton &= ~OrbisPadButton.ORBIS_PAD_BUTTON_TOUCH_PAD;
+        disableTouchPoint1();
+        touchPoint1Up(ev);
       }
 
       ev.preventDefault();

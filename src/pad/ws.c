@@ -183,6 +183,18 @@ static void rpc_update(struct mg_rpc_req *r) {
     uint32_t rightStickY = mg_json_get_long(r->frame, "$.params[5]", 128);
     uint32_t left2 = mg_json_get_long(r->frame, "$.params[6]", 0);
     uint32_t right2 = mg_json_get_long(r->frame, "$.params[7]", 0);
+    uint32_t touchNum = mg_json_get_long(r->frame, "$.params[8]", 0);
+    uint32_t touch1Id = 0, touch1X = 0, touch1Y = 0, touch2Id = 0, touch2X = 0, touch2Y = 0;
+    if (touchNum > 0) {
+        touch1Id = mg_json_get_long(r->frame, "$.params[9]", 0);
+        touch1X = mg_json_get_long(r->frame, "$.params[10]", 0);
+        touch1Y = mg_json_get_long(r->frame, "$.params[11]", 0);
+    }
+    if (touchNum > 1){
+        touch2Id = mg_json_get_long(r->frame, "$.params[12]", 0);
+        touch2X = mg_json_get_long(r->frame, "$.params[13]", 0);
+        touch2Y = mg_json_get_long(r->frame, "$.params[14]", 0);
+    }
 
     climp(&leftStickX, 0, 255);
     climp(&leftStickY, 0, 255);
@@ -190,6 +202,13 @@ static void rpc_update(struct mg_rpc_req *r) {
     climp(&rightStickY, 0, 255);
     climp(&left2, 0, 255);
     climp(&right2, 0, 255);
+    climp(&touchNum, 0, 2);
+    climp(&touch1Id, 0, 127);
+    climp(&touch1X, 0, 1919);
+    climp(&touch1Y, 0, 941);
+    climp(&touch2Id, 0, 127);
+    climp(&touch2X, 0, 1919);
+    climp(&touch2Y, 0, 941);
 
     if (index >= REMOTE_PAD_MAX_PADS)
         return;
@@ -203,6 +222,13 @@ static void rpc_update(struct mg_rpc_req *r) {
     padData.rightStick.y = rightStickY;
     padData.analogButtons.l2 = left2;
     padData.analogButtons.r2 = right2;
+    padData.touch.fingers = touchNum;
+    padData.touch.touch[0].finger = touch1Id;
+    padData.touch.touch[0].x = touch1X;
+    padData.touch.touch[0].y = touch1Y;
+    padData.touch.touch[1].finger = touch2Id;
+    padData.touch.touch[1].x = touch2X;
+    padData.touch.touch[1].y = touch2Y;
     padData.timestamp = sceKernelGetProcessTime();
     padData.count = 1;
     padData.connected = 1;

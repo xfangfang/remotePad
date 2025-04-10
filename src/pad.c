@@ -212,6 +212,7 @@ RemotePadService rps = {
         .setLightBar = padSetLightBar,
         .resetLightBar = padResetLightBar,
         .setVibration = padSetVibration,
+        .resetOrientation = padResetOrientation,
         .setMotionSensorState = padSetMotionSensorState,
         .setTiltCorrectionState = padSetTiltCorrectionState,
         .setAngularVelocityDeadbandState = padSetAngularVelocityDeadbandState,
